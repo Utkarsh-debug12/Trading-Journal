@@ -147,6 +147,99 @@ The analytical powerhouse of the application.
 * **[ADDED] StatsEngine Class:** Computes Sharpe Ratio, Sortino Ratio, R-multiple distributions, and streak statistics from the trade vector.
 * **[ADDED] TaxLotMatcher Class:** Applies FIFO/LIFO/average-cost logic to match partial entries and exits for accurate realized gain/loss on scaled trades.
 
+## 📂 Project File Structure
+
+```
+trading_journal/
+├── app.py                     # Entry point: creates the Flask app, runs dev server
+├── requirements.txt
+├── .env.example                # SECRET_KEY, DATABASE_URL, REDIS_URL, API keys, etc.
+├── Dockerfile
+├── docker-compose.yml           # web, redis, celery-worker, celery-beat
+├── README.md
+│
+├── app/
+│   ├── __init__.py              # App factory: create_app()
+│   ├── config.py                # Dev/Prod/Testing config classes
+│   ├── extensions.py            # db, login_manager, csrf, limiter, socketio, celery, babel, migrate
+│   │
+│   ├── models/
+│   │   ├── user.py               # users table
+│   │   ├── trade.py              # trades table
+│   │   ├── checklist.py          # checklist_templates, trade_checklist_results
+│   │   ├── watchlist.py          # watchlist table
+│   │   └── alert.py              # alerts_log table
+│   │
+│   ├── blueprints/               # one folder per feature area (__init__.py + routes.py [+ forms.py])
+│   │   ├── auth/                 # login, register, logout, forgot/reset password, verify 2FA
+│   │   ├── dashboard/            # overview: equity curve, key metrics
+│   │   ├── trades/               # list/filter, new (+checklist+risk calc), detail (+replay/annotation), edit, delete
+│   │   ├── analytics/            # win rate, profit factor, drawdown, expectancy, Sharpe/Sortino, R-multiple
+│   │   ├── calendar/              # daily P&L heatmap
+│   │   ├── watchlist/             # tickers + price alerts
+│   │   ├── alerts/                 # notifications center
+│   │   ├── import_export/          # broker CSV import (+dedup), CSV export, GDPR export/delete
+│   │   ├── reports/                 # PDF/CSV report generation
+│   │   ├── backtesting/             # rule-set setup + results
+│   │   ├── risk_tools/               # position size / R:R / Kelly Criterion calculator
+│   │   ├── checklists/                # manage pre-trade checklist templates
+│   │   ├── settings/                   # profile, theme, currency, 2FA, notifications
+│   │   ├── admin/                       # aggregate stats, user management, moderation
+│   │   ├── api/                          # token-auth REST API (trade CRUD + analytics), webhook ingestion
+│   │   └── onboarding/                    # first-run walkthrough + seed data
+│   │
+│   ├── templates/                # mirrors blueprints, one .html per page + shared layout
+│   │   ├── base.html
+│   │   ├── auth/               login.html, register.html, forgot_password.html, reset_password.html, verify_2fa.html
+│   │   ├── dashboard/          dashboard.html
+│   │   ├── trades/             trades_list.html, trade_new.html, trade_detail.html, trade_edit.html
+│   │   ├── analytics/          analytics.html
+│   │   ├── calendar/           calendar_heatmap.html
+│   │   ├── watchlist/          watchlist.html
+│   │   ├── alerts/             alerts_center.html
+│   │   ├── import_export/      import.html, export.html
+│   │   ├── reports/            reports.html
+│   │   ├── backtesting/        backtest_setup.html, backtest_results.html
+│   │   ├── risk_tools/         risk_calculator.html
+│   │   ├── checklists/         checklist_templates.html
+│   │   ├── settings/           settings.html
+│   │   ├── admin/              admin_dashboard.html, admin_users.html
+│   │   ├── onboarding/         onboarding.html
+│   │   ├── errors/             404.html, 500.html
+│   │   └── partials/           _navbar.html, _sidebar.html, _flash_messages.html
+│   │
+│   ├── static/
+│   │   ├── css/                 base.css, dashboard.css, trades.css, analytics.css, calendar.css, theme-dark.css
+│   │   ├── js/                  charts.js, trades.js, watchlist.js, alerts.js, calendar_heatmap.js,
+│   │   │                        risk_calculator.js, theme_toggle.js, tradingview_embed.js
+│   │   └── img/
+│   │
+│   ├── tasks/                    # Celery jobs
+│   │   ├── celery_app.py
+│   │   ├── report_tasks.py       # async PDF/CSV generation
+│   │   ├── alert_tasks.py        # periodic price/drawdown/streak checks
+│   │   └── broker_sync_tasks.py  # async import processing + dedup
+│   │
+│   └── cpp_bridge/
+│       └── __init__.py           # imports the compiled trading_engine pybind11 module
+│
+├── cpp_engine/
+│   ├── trade.hpp / trade.cpp
+│   ├── journal.hpp / journal.cpp
+│   ├── risk_manager.hpp / risk_manager.cpp
+│   ├── correlation_engine.hpp / correlation_engine.cpp
+│   ├── backtester.hpp / backtester.cpp
+│   ├── stats_engine.hpp / stats_engine.cpp
+│   ├── tax_lot_matcher.hpp / tax_lot_matcher.cpp
+│   └── bindings.cpp              # pybind11 module definition
+│
+├── migrations/                   # Flask-Migrate/Alembic version history
+│
+└── tests/
+    ├── python/                   # pytest: auth, trades, analytics
+    └── cpp/                      # gtest: Journal/Trade math, RiskManager/Kelly correctness
+```
+
 ## 🚀 Installation and Setup Guide
 
 ### Prerequisites
