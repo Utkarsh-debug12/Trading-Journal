@@ -1,6 +1,6 @@
 # Trading Journal: Hybrid C++ & Flask Application
 
-## 📖 Project Overview
+## 📖 Project Overview  
 The Trading Journal is a web-based application designed for traders to log, track, and analyze their trading history. The core business logic, including complex profit/loss (P&L) calculations and data structuring, is handled by a compiled C++ engine to ensure maximum performance and strict memory management. The user interface and web routing are managed by Python's Flask framework, rendering HTML templates via Jinja2. Data persistence is achieved using a local SQLite database.
 
 ## ✨ Core Features & Capabilities
