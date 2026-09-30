@@ -1,339 +1,391 @@
-# Trading Journal: Hybrid C++ & Flask Application
+# Trading Journal: A C++ Web Application (Mini Project)
 
-## 📖 Project Overview  
-The Trading Journal is a web-based application designed for traders to log, track, and analyze their trading history. The core business logic, including complex profit/loss (P&L) calculations and data structuring, is handled by a compiled C++ engine to ensure maximum performance and strict memory management. The user interface and web routing are managed by Python's Flask framework, rendering HTML templates via Jinja2. Data persistence is achieved using a local SQLite database.
+## 📖 Project Overview
+The Trading Journal is a small web application that lets a trader **log trades, review their history, and see performance analytics**. The whole backend is written in **C++17**: web server, routing, authentication, database access, and analytics. The browser side is a thin layer of HTML, CSS, and a little JavaScript (Chart.js) for drawing charts.
 
-## ✨ Core Features & Capabilities
-* **Trade Management:** Log, edit, and track historical trades.
-* **High-Performance Analytics:** C++ backend computes complex aggregate metrics efficiently (Win Rate, Profit Factor, Maximum Drawdown, Expectancy).
-* **Interactive Data Visualization:** View P&L curves and trade distributions via Chart.js integration.
-* **Broker CSV Import/Export [NEW]:** Seamlessly import historical trade data from major brokers (Binance, TD Ameritrade, Interactive Brokers) or export for tax purposes.
-* **User Authentication [NEW]:** Secure login system enabling multi-user support, keeping individual trading journals private.
-* **Live Market Data [NEW]:** Optional integration with financial APIs (e.g., Alpha Vantage, Yahoo Finance) to compare historical trades against live market benchmarks.
-* **Risk Management Toolkit [ADDED]:** Pre-trade position-size calculator (based on account risk %, stop-loss distance), automatic risk/reward ratio computation, and Kelly Criterion sizing suggestions.
-* **Trade Psychology & Discipline Tracking [ADDED]:** Tag each trade with emotional state (e.g., FOMO, revenge trade, disciplined) and a confidence rating (1–5) to correlate mindset with performance over time.
-* **Calendar Heatmap View [ADDED]:** Monthly calendar showing daily net P&L color-coded by gain/loss, similar to a GitHub contribution graph.
-* **Watchlist & Price Alerts [ADDED]:** Maintain a watchlist of tickers and set price/percentage-move alerts that trigger email or in-app notifications.
-* **Advanced Filtering & Search [ADDED]:** Filter/search the trade log by ticker, date range, strategy tag, direction, win/loss, or emotional tag.
-* **Report Export (PDF/CSV) [ADDED]:** Generate polished PDF performance reports (for tax season, mentors, or prop-firm evaluations) in addition to raw CSV export.
-* **Real-Time Notifications [ADDED]:** Email/push notifications for drawdown thresholds, streaks, and milestone achievements (e.g., "New equity high").
-* **Strategy Backtesting Module [ADDED]:** Replay historical trades or hypothetical rule sets against stored/live price data to estimate strategy performance before risking capital.
-* **Trade Replay & Timeline [ADDED]:** Chronological, annotated timeline of a single trade's lifecycle (entry, scale-ins/outs, exit, notes, screenshots).
-* **Correlation & Exposure Analysis [ADDED]:** Detect overexposure to correlated tickers/sectors and flag concentration risk.
-* **Multi-Currency Support [ADDED]:** Log and convert P&L across different account currencies using live FX rates.
-* **Dark Mode / Theming [ADDED]:** User-toggleable light/dark UI themes, persisted per user.
-* **Mobile-Responsive / PWA Support [ADDED]:** Installable Progressive Web App with offline trade-entry queuing for logging trades on the go.
-* **Role-Based Access Control [ADDED]:** Admin role for managing users, viewing aggregate (anonymized) platform stats, and moderating shared content.
-* **Advanced Statistics Suite [ADDED]:** Sharpe Ratio, Sortino Ratio, R-multiple distribution, and win/loss streak tracking alongside the existing Win Rate/Profit Factor/Drawdown/Expectancy metrics.
-* **Tax Lot Accounting [ADDED]:** FIFO/LIFO/average-cost lot matching for accurate realized gain/loss calculation, especially for partial fills and scaled entries/exits.
-* **Multi-Instrument Support [ADDED]:** First-class handling of options and futures contracts (strike, expiry, contract multiplier, Greeks) in addition to equities and crypto.
-* **Pre-Trade Checklists & Templates [ADDED]:** Customizable rule checklists (e.g., "Is this A+ setup? Is risk defined?") that must be acknowledged before logging a new trade, reinforcing discipline.
-* **Chart Annotation / TradingView Embed [ADDED]:** Embed a TradingView (or lightweight-charts) widget on each trade's detail page, with the ability to annotate entry/exit points directly on the chart.
-* **Full-Text Notes Search [ADDED]:** Search across trade notes/rationale text, not just structured fields like ticker or tag.
-* **Data Export & Right-to-be-Forgotten [ADDED]:** Users can export their complete account data (GDPR-style data portability) or request full account deletion.
-* **Guided Onboarding [ADDED]:** First-run walkthrough/tutorial and sample seed data to help new users understand the dashboard and metrics.
-* **Accessibility (a11y) Support [ADDED]:** Keyboard navigation, ARIA labels, and sufficient color contrast (including in dark mode and the P&L calendar heatmap) to meet WCAG 2.1 AA guidelines.
-* **Public REST API [ADDED]:** Token-authenticated API exposing trade CRUD and analytics endpoints so users can build their own integrations or scripts.
-* **Webhook Ingestion [ADDED]:** Accept inbound webhooks (e.g., from TradingView alerts) to auto-create draft trade entries pending user confirmation.
-* **Duplicate Detection on Import [ADDED]:** CSV/broker imports are checked against existing records (ticker + timestamp + size) to prevent accidental double-entry.
-* **Automated Backups [ADDED]:** Scheduled, encrypted database backups (local or to cloud storage) with a one-click restore flow.
-* **Localization (i18n) [ADDED]:** UI strings and number/date/currency formatting externalized for translation into additional languages.
-* **Subscription Tiers [ADDED]:** Optional Free vs. Pro plan gating (e.g., trade-count limits, advanced analytics, PDF exports reserved for Pro) with Stripe billing integration.
-* **Print-Friendly Views [ADDED]:** Clean, ad-free print stylesheet for trade logs and performance reports.
+This is a **mini project**. It is scoped to be finished by a team of 1–3 students in about **4 weeks**, and it focuses on showing good C++ and OOP practice rather than building a full commercial product.
+
+**Language split:** ~85% C++, ~15% HTML/CSS/JS.
+
+## 🎯 Objectives
+1. Apply object-oriented C++ (classes, inheritance, polymorphism, RAII, STL) to a real problem.
+2. Build a working web application in C++ with a database.
+3. Implement financial analytics (P&L, win rate, drawdown, etc.) with unit-tested, correct math.
+4. Practise secure coding basics: password hashing, prepared statements, per-user data isolation.
+
+## ✨ Features
+
+### Included in this project
+| # | Feature | Description |
+|---|---|---|
+| 1 | **User Accounts** | Register, log in, log out. Passwords are hashed; each user sees only their own trades. |
+| 2 | **Trade Management** | Add, view, edit, and delete trades (ticker, direction, entry/exit price, quantity, fees, date, notes). |
+| 3 | **Tags** | Tag each trade with a strategy (e.g. "Breakout") and an emotion (e.g. "FOMO", "Disciplined"). |
+| 4 | **Search & Filter** | Filter the trade list by ticker, date range, direction, win/loss, strategy, or emotion. |
+| 5 | **Analytics Dashboard** | Total P&L, Win Rate, Profit Factor, Expectancy, Average Win/Loss, Maximum Drawdown, longest win/loss streak. |
+| 6 | **Charts** | Equity curve and P&L per trade using Chart.js, fed by a JSON endpoint. |
+| 7 | **Performance by Emotion/Strategy** | Table showing average P&L for each tag, to link mindset with results. |
+| 8 | **Position-Size Calculator** | Enter account size, risk %, entry and stop-loss to get the recommended quantity and risk/reward ratio. |
+| 9 | **CSV Export / Import** | Export trades to CSV and import a CSV with duplicate detection (ticker + timestamp + quantity). |
+
+### Out of scope (listed under Future Scope)
+Live market data, price alerts, notifications, 2FA, payments, backtesting, PDF reports, multi-currency, options/futures, PWA, REST API tokens, admin panel, and backups. These are good extensions but too large for a mini project.
 
 ## 🛠️ Technology Stack
-* **Core Engine:** C++ (Object-Oriented Principles, `std::vector`)
-* **Binding Layer:** `pybind11` (bridges C++ and Python)
-* **Web Framework:** Python (Flask, Jinja2)
-* **Frontend UI:** HTML5, CSS (Bootstrap recommended), JavaScript (Chart.js)
-* **Database:** SQLite
-* **Containerization [NEW]:** Docker (Simplifies setup of the hybrid C++/Python environment)
-* **Task Queue & Caching [ADDED]:** Celery + Redis for asynchronous jobs (PDF generation, alert checks, broker sync) and API response caching.
-* **Real-Time Layer [ADDED]:** Flask-SocketIO (or WebSockets) for live dashboard updates and instant price-alert delivery.
-* **PDF Generation [ADDED]:** WeasyPrint or ReportLab for rendering performance reports.
-* **Authentication & Security [ADDED]:** Flask-Login for session management, Flask-WTF for CSRF protection, `bcrypt`/`argon2` for password hashing, and TOTP-based 2FA (e.g., `pyotp`).
-* **CI/CD [ADDED]:** GitHub Actions pipeline running Python (`pytest`) and C++ (`gtest`) test suites on every push, plus automated Docker image builds.
-* **Database Migrations [ADDED]:** Flask-Migrate/Alembic to version-control schema changes safely across environments.
-* **Structured Logging & Monitoring [ADDED]:** Python `logging` with JSON formatting, Sentry for error tracking, and a `/health` endpoint for uptime checks (Prometheus-compatible metrics optional).
-* **Configuration Management [ADDED]:** `python-dotenv` for environment-specific secrets/config (API keys, DB URLs) kept out of source control via `.env` files.
-* **Charting Widget [ADDED]:** TradingView Lightweight Charts (or full TradingView widget) for embedded, annotatable price charts on trade detail pages.
-* **API Authentication [ADDED]:** JWT or API-key based auth (`flask-jwt-extended`) for the public REST API, separate from browser session auth.
-* **Billing [ADDED]:** Stripe (`stripe-python`) for subscription/payment handling.
-* **Internationalization [ADDED]:** `Flask-Babel` for translated strings and locale-aware formatting.
-* **Backup Automation [ADDED]:** Scheduled via `cron` or a Celery Beat periodic task, with backups optionally pushed to S3-compatible storage (`boto3`).
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Language** | C++17 | Course requirement; modern features (`std::optional`, structured bindings) |
+| **Build** | CMake | Standard, cross-platform |
+| **Web framework** | [Crow](https://github.com/CrowCpp/Crow) (single header `crow_all.h`) | Flask-like routing, built-in sessions/cookies and Mustache templates, minimal setup |
+| **Database** | SQLite 3 (C API wrapped in your own RAII `Database` class) | Zero server setup, single file; the wrapper demonstrates RAII |
+| **JSON** | nlohmann/json | Clean JSON for chart endpoints |
+| **Password hashing** | libsodium (`crypto_pwhash_str`, Argon2id) | Secure and only two function calls |
+| **Templates** | Crow Mustache (`.html` files) | Server-side rendering |
+| **Frontend** | Bootstrap 5 + Chart.js (loaded from CDN) | No build tools needed |
+| **Testing** | GoogleTest (or plain `assert` if you prefer) | Verify analytics math |
+
+**Dependencies to install: only 4** (Crow header, SQLite, libsodium, nlohmann/json) plus Asio, which Crow needs.
 
 ## 🏗️ System Architecture
-The application follows a distinct three-tier architecture emphasizing a clear separation of concerns:
+A simple layered design:
 
-### 1. The Data Tier (SQLite)
-A persistent local database storing trade records. The schema is expanded to meet professional expectations:
+```
+ Browser (HTML + Bootstrap + Chart.js)
+        │  HTTP
+        ▼
+ ┌────────────────────────────────────────┐
+ │ Web Layer (Crow)                        │  routes, sessions, templates
+ ├────────────────────────────────────────┤
+ │ Domain Layer                            │  Trade, Journal (analytics),
+ │                                         │  PositionCalculator, CsvService
+ ├────────────────────────────────────────┤
+ │ Data Layer                              │  Database (RAII), UserRepository,
+ │                                         │  TradeRepository
+ └────────────────────────────────────────┘
+        │
+   trading_journal.db  (SQLite file)
+```
 
-**`trades` table**
-* `id` (INTEGER PRIMARY KEY)
-* `user_id` (INTEGER) - *[NEW] Foreign key for user accounts*
-* `ticker` (TEXT)
-* `trade_direction` (TEXT) - *[NEW] e.g., Long / Short*
-* `entry_price` (REAL)
-* `exit_price` (REAL)
-* `position_size` (INTEGER)
-* `fees` (REAL) - *[NEW] Brokerage and commission fees*
-* `strategy_tags` (TEXT) - *[NEW] Tagging for A/B testing different strategies*
-* `timestamp` (DATETIME)
-* `notes` (TEXT) - *Include trade rationale or attached screenshots*
-* `stop_loss` (REAL) - *[ADDED] Used for risk/reward and position-size calculations*
-* `take_profit` (REAL) - *[ADDED]*
-* `risk_reward_ratio` (REAL) - *[ADDED] Computed at trade entry*
-* `emotion_tag` (TEXT) - *[ADDED] e.g., FOMO, Disciplined, Revenge Trade*
-* `confidence_rating` (INTEGER) - *[ADDED] 1–5 scale*
-* `currency` (TEXT) - *[ADDED] ISO currency code for multi-currency support*
-* `instrument_type` (TEXT) - *[ADDED] e.g., Equity, Option, Future, Crypto, Forex*
-* `contract_details` (TEXT/JSON) - *[ADDED] Strike, expiry, multiplier, Greeks for options/futures*
-* `lot_matching_method` (TEXT) - *[ADDED] FIFO / LIFO / Average-Cost, used for realized P&L on partial fills*
+The **Domain Layer knows nothing about Crow or SQLite**, so it can be unit-tested on its own.
 
-**`checklist_templates` table [ADDED]**
-* `id` (INTEGER PRIMARY KEY)
-* `user_id` (INTEGER, FK)
-* `name` (TEXT) - *e.g., "A+ Setup Checklist"*
-* `items` (TEXT/JSON) - *list of checklist questions/criteria*
+### Key Classes
+| Class | Responsibility |
+|---|---|
+| `Trade` | One trade. `const` methods: `profit()`, `isWin()`, `riskRewardRatio()`. |
+| `Journal` | Holds `std::vector<Trade>`. Computes win rate, profit factor, expectancy, max drawdown, equity curve, streaks. |
+| `PositionCalculator` | Position size and risk/reward from account size, risk %, entry, stop. |
+| `CsvService` | Reads/writes trades as CSV (file I/O, string parsing, duplicate check). |
+| `Database` | RAII wrapper over `sqlite3*` (opens in constructor, closes in destructor); prepared-statement helper. |
+| `UserRepository` | `create()`, `findByUsername()`. |
+| `TradeRepository` | `add()`, `update()`, `remove()`, `findById()`, `search(filter)`, all scoped by `user_id`. |
+| `AuthService` | Hash/verify passwords with libsodium; session helpers. |
 
-**`trade_checklist_results` table [ADDED]**
-* `id` (INTEGER PRIMARY KEY)
-* `trade_id` (INTEGER, FK)
-* `template_id` (INTEGER, FK)
-* `responses` (TEXT/JSON) - *pass/fail per checklist item at time of entry*
+### Database Schema (2 tables)
 
-**`users` table [ADDED]**
-* `id` (INTEGER PRIMARY KEY)
-* `username` (TEXT, UNIQUE)
-* `email` (TEXT, UNIQUE)
-* `password_hash` (TEXT)
-* `totp_secret` (TEXT, NULLABLE) - *for 2FA*
-* `role` (TEXT) - *e.g., "user", "admin"*
-* `created_at` (DATETIME)
+**`users`**
+| Column | Type |
+|---|---|
+| `id` | INTEGER PRIMARY KEY |
+| `username` | TEXT UNIQUE NOT NULL |
+| `password_hash` | TEXT NOT NULL |
+| `created_at` | DATETIME DEFAULT CURRENT_TIMESTAMP |
 
-**`watchlist` table [ADDED]**
-* `id` (INTEGER PRIMARY KEY)
-* `user_id` (INTEGER, FK)
-* `ticker` (TEXT)
-* `alert_price` (REAL, NULLABLE)
-* `alert_direction` (TEXT, NULLABLE) - *"above"/"below"*
+**`trades`**
+| Column | Type |
+|---|---|
+| `id` | INTEGER PRIMARY KEY |
+| `user_id` | INTEGER NOT NULL, FK → users(id) |
+| `ticker` | TEXT NOT NULL |
+| `direction` | TEXT NOT NULL (`Long` / `Short`) |
+| `entry_price` | REAL NOT NULL |
+| `exit_price` | REAL NOT NULL |
+| `quantity` | INTEGER NOT NULL |
+| `fees` | REAL DEFAULT 0 |
+| `stop_loss` | REAL (nullable) |
+| `strategy_tag` | TEXT |
+| `emotion_tag` | TEXT |
+| `trade_date` | DATETIME NOT NULL |
+| `notes` | TEXT |
 
-**`alerts_log` table [ADDED]**
-* `id` (INTEGER PRIMARY KEY)
-* `user_id` (INTEGER, FK)
-* `message` (TEXT)
-* `triggered_at` (DATETIME)
-* `read` (BOOLEAN)
+### Analytics Formulas
+* **Profit (Long):** `(exit − entry) × quantity − fees`
+* **Profit (Short):** `(entry − exit) × quantity − fees`
+* **Win Rate:** `winning trades ÷ total trades × 100`
+* **Profit Factor:** `gross profit ÷ gross loss` (report "∞" if there are no losses)
+* **Expectancy:** `(win rate × avg win) − (loss rate × avg loss)`
+* **Equity Curve:** running cumulative sum of profits ordered by date
+* **Maximum Drawdown:** largest drop from a running peak of the equity curve to a later low
 
-### 2. The Application Tier (Python/Flask)
-Acts as the controller and routing mechanism.
-* Handles HTTP requests (GET/POST) from the browser.
-* Manages user sessions and authentication logic.
-* Interacts with the SQLite database to fetch or store data.
-* Instantiates C++ objects from the fetched data using the compiled `trading_engine` module.
-* Passes the C++ objects to Jinja2 templates for rendering.
-* **[ADDED]** Enforces CSRF protection on all form submissions and rate-limits sensitive endpoints (login, password reset) via Flask-Limiter.
-* **[ADDED]** Dispatches background jobs (PDF report generation, price-alert polling, broker sync) to a Celery worker queue backed by Redis.
-* **[ADDED]** Emits real-time events over WebSockets when new trades are logged or alerts trigger.
-
-### 3. The Processing Tier (C++ Engine)
-The analytical powerhouse of the application.
-* **Trade Class:** A C++ class representing individual trades, utilizing `const` correctness for read-only metric calculations (e.g., `calculateProfit()`), heavily factoring in fees and direction.
-* **Journal Class:** A class utilizing `std::vector<Trade>` to process complex aggregate data efficiently, calculating advanced trading metrics like Profit Factor (gross profit / gross loss), Maximum Drawdown, and Expectancy.
-* **pybind11 Wrapper:** Exposes the C++ classes and methods so they can be imported as a standard Python module.
-* **[ADDED] RiskManager Class:** Computes position sizing from account equity, risk percentage, and stop-loss distance; also derives Kelly Criterion fraction from historical win rate and average win/loss.
-* **[ADDED] CorrelationEngine Class:** Calculates pairwise correlation between tickers in the open/historical portfolio to flag concentration risk.
-* **[ADDED] Backtester Class:** Iterates historical price series against a defined rule set to simulate strategy performance (returns, drawdown, win rate) prior to live execution.
-* **[ADDED] StatsEngine Class:** Computes Sharpe Ratio, Sortino Ratio, R-multiple distributions, and streak statistics from the trade vector.
-* **[ADDED] TaxLotMatcher Class:** Applies FIFO/LIFO/average-cost logic to match partial entries and exits for accurate realized gain/loss on scaled trades.
+### Web Routes
+| Method | Route | Purpose |
+|---|---|---|
+| GET/POST | `/register` | Create account |
+| GET/POST | `/login` | Log in |
+| GET | `/logout` | Log out |
+| GET | `/` | Dashboard (metrics + charts) |
+| GET | `/trades` | List with filters |
+| GET/POST | `/trades/new` | Add trade |
+| GET/POST | `/trades/<id>/edit` | Edit trade |
+| POST | `/trades/<id>/delete` | Delete trade |
+| GET | `/analytics/by-tag` | Emotion/strategy breakdown |
+| GET | `/calculator` | Position-size calculator |
+| GET | `/export` | Download CSV |
+| POST | `/import` | Upload CSV |
+| GET | `/api/equity-curve` | JSON for Chart.js |
+| GET | `/api/pnl-per-trade` | JSON for Chart.js |
 
 ## 📂 Project File Structure
 
 ```
 trading_journal/
-├── app.py                     # Entry point: creates the Flask app, runs dev server
-├── requirements.txt
-├── .env.example                # SECRET_KEY, DATABASE_URL, REDIS_URL, API keys, etc.
-├── Dockerfile
-├── docker-compose.yml           # web, redis, celery-worker, celery-beat
+├── CMakeLists.txt
 ├── README.md
+├── third_party/
+│   └── crow/crow_all.h            # single-header Crow
 │
-├── app/
-│   ├── __init__.py              # App factory: create_app()
-│   ├── config.py                # Dev/Prod/Testing config classes
-│   ├── extensions.py            # db, login_manager, csrf, limiter, socketio, celery, babel, migrate
-│   │
-│   ├── models/
-│   │   ├── user.py               # users table
-│   │   ├── trade.py              # trades table
-│   │   ├── checklist.py          # checklist_templates, trade_checklist_results
-│   │   ├── watchlist.py          # watchlist table
-│   │   └── alert.py              # alerts_log table
-│   │
-│   ├── blueprints/               # one folder per feature area (__init__.py + routes.py [+ forms.py])
-│   │   ├── auth/                 # login, register, logout, forgot/reset password, verify 2FA
-│   │   ├── dashboard/            # overview: equity curve, key metrics
-│   │   ├── trades/               # list/filter, new (+checklist+risk calc), detail (+replay/annotation), edit, delete
-│   │   ├── analytics/            # win rate, profit factor, drawdown, expectancy, Sharpe/Sortino, R-multiple
-│   │   ├── calendar/              # daily P&L heatmap
-│   │   ├── watchlist/             # tickers + price alerts
-│   │   ├── alerts/                 # notifications center
-│   │   ├── import_export/          # broker CSV import (+dedup), CSV export, GDPR export/delete
-│   │   ├── reports/                 # PDF/CSV report generation
-│   │   ├── backtesting/             # rule-set setup + results
-│   │   ├── risk_tools/               # position size / R:R / Kelly Criterion calculator
-│   │   ├── checklists/                # manage pre-trade checklist templates
-│   │   ├── settings/                   # profile, theme, currency, 2FA, notifications
-│   │   ├── admin/                       # aggregate stats, user management, moderation
-│   │   ├── api/                          # token-auth REST API (trade CRUD + analytics), webhook ingestion
-│   │   └── onboarding/                    # first-run walkthrough + seed data
-│   │
-│   ├── templates/                # mirrors blueprints, one .html per page + shared layout
-│   │   ├── base.html
-│   │   ├── auth/               login.html, register.html, forgot_password.html, reset_password.html, verify_2fa.html
-│   │   ├── dashboard/          dashboard.html
-│   │   ├── trades/             trades_list.html, trade_new.html, trade_detail.html, trade_edit.html
-│   │   ├── analytics/          analytics.html
-│   │   ├── calendar/           calendar_heatmap.html
-│   │   ├── watchlist/          watchlist.html
-│   │   ├── alerts/             alerts_center.html
-│   │   ├── import_export/      import.html, export.html
-│   │   ├── reports/            reports.html
-│   │   ├── backtesting/        backtest_setup.html, backtest_results.html
-│   │   ├── risk_tools/         risk_calculator.html
-│   │   ├── checklists/         checklist_templates.html
-│   │   ├── settings/           settings.html
-│   │   ├── admin/              admin_dashboard.html, admin_users.html
-│   │   ├── onboarding/         onboarding.html
-│   │   ├── errors/             404.html, 500.html
-│   │   └── partials/           _navbar.html, _sidebar.html, _flash_messages.html
-│   │
-│   ├── static/
-│   │   ├── css/                 base.css, dashboard.css, trades.css, analytics.css, calendar.css, theme-dark.css
-│   │   ├── js/                  charts.js, trades.js, watchlist.js, alerts.js, calendar_heatmap.js,
-│   │   │                        risk_calculator.js, theme_toggle.js, tradingview_embed.js
-│   │   └── img/
-│   │
-│   ├── tasks/                    # Celery jobs
-│   │   ├── celery_app.py
-│   │   ├── report_tasks.py       # async PDF/CSV generation
-│   │   ├── alert_tasks.py        # periodic price/drawdown/streak checks
-│   │   └── broker_sync_tasks.py  # async import processing + dedup
-│   │
-│   └── cpp_bridge/
-│       └── __init__.py           # imports the compiled trading_engine pybind11 module
+├── include/
+│   ├── trade.hpp
+│   ├── journal.hpp
+│   ├── position_calculator.hpp
+│   ├── csv_service.hpp
+│   ├── database.hpp
+│   ├── user_repository.hpp
+│   ├── trade_repository.hpp
+│   └── auth_service.hpp
 │
-├── cpp_engine/
-│   ├── trade.hpp / trade.cpp
-│   ├── journal.hpp / journal.cpp
-│   ├── risk_manager.hpp / risk_manager.cpp
-│   ├── correlation_engine.hpp / correlation_engine.cpp
-│   ├── backtester.hpp / backtester.cpp
-│   ├── stats_engine.hpp / stats_engine.cpp
-│   ├── tax_lot_matcher.hpp / tax_lot_matcher.cpp
-│   └── bindings.cpp              # pybind11 module definition
+├── src/
+│   ├── main.cpp                    # sets up Crow app, registers routes, starts server
+│   ├── trade.cpp
+│   ├── journal.cpp
+│   ├── position_calculator.cpp
+│   ├── csv_service.cpp
+│   ├── database.cpp
+│   ├── user_repository.cpp
+│   ├── trade_repository.cpp
+│   ├── auth_service.cpp
+│   └── routes.cpp                  # all route handlers
 │
-├── migrations/                   # Flask-Migrate/Alembic version history
+├── templates/                      # Mustache HTML
+│   ├── base.html   login.html   register.html
+│   ├── dashboard.html   trades.html   trade_form.html
+│   ├── by_tag.html   calculator.html
+│
+├── static/
+│   ├── css/style.css
+│   └── js/charts.js
+│
+├── sql/
+│   └── schema.sql                  # CREATE TABLE statements (run at startup if DB is empty)
+│
+├── sample_data/
+│   └── sample_trades.csv           # demo data for the viva
 │
 └── tests/
-    ├── python/                   # pytest: auth, trades, analytics
-    └── cpp/                      # gtest: Journal/Trade math, RiskManager/Kelly correctness
+    ├── CMakeLists.txt
+    ├── test_trade.cpp
+    ├── test_journal.cpp
+    └── test_position_calculator.cpp
 ```
 
-## 🚀 Installation and Setup Guide
+## 🚀 Installation and Setup
 
-### Prerequisites
-Ensure the following software is installed on your system:
-* A C++ Compiler (GCC, Clang, or MSVC) supporting C++11 or higher.
-* Python 3.x
-* `pip` (Python package installer)
-* *Optional: Docker & Docker Compose (for containerized setup)*
-* **[ADDED]** Redis server (for Celery task queue and caching)
-* **[ADDED]** A `.env` file for local secrets (DB URL, API keys, `SECRET_KEY`) — never commit this to source control
-
-### Environment Setup
-
-1. **Clone or create the project directory:**
-   ```bash
-   mkdir trading_journal
-   cd trading_journal
-   ```
-
-2. **Create a Virtual Environment (Recommended):**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install Required Python Packages:**
-   ```bash
-   pip install flask pybind11 pytest
-   # [ADDED] Additional packages for new features:
-   pip install flask-login flask-wtf flask-limiter flask-socketio \
-               celery redis bcrypt pyotp weasyprint requests
-   # [ADDED] Round 2: migrations, config, monitoring, stats
-   pip install flask-migrate python-dotenv sentry-sdk numpy pandas
-   ```
-
-### Compiling the C++ Engine
-You must compile the C++ code into a shared object file that Python can import. Run the following command in the terminal within your project directory:
-
+### Option A: Ubuntu / Debian / WSL (easiest)
 ```bash
-c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) trading_engine.cpp -o trading_engine$(python3-config --extension-suffix)
+sudo apt update
+sudo apt install build-essential cmake libsqlite3-dev libsodium-dev \
+                 libasio-dev nlohmann-json3-dev libgtest-dev
 ```
-*Note: This command generates a `.so` (Linux/macOS) or `.pyd` (Windows) file.*
+Download `crow_all.h` from the [Crow releases page](https://github.com/CrowCpp/Crow/releases) and place it in `third_party/crow/`.
 
-### Database Migrations [ADDED]
-Initialize and apply schema migrations before first run (and any time the schema changes):
+### Option B: Windows / macOS with vcpkg
 ```bash
-flask db init
-flask db migrate -m "Initial schema"
-flask db upgrade
+vcpkg install sqlite3 libsodium asio nlohmann-json gtest
 ```
+Then pass `-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake` to CMake.
 
-### Running the Application
-Once the module is compiled, start the Flask development server:
+### Build
 ```bash
-python app.py
+git clone <your-repo-url> trading_journal
+cd trading_journal
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
-Navigate to `http://127.0.0.1:5000` in your web browser to view the application.
 
-**[ADDED]** To enable background jobs and real-time alerts, also start the Redis server and a Celery worker:
+### Run
 ```bash
-redis-server &
-celery -A app.celery worker --loglevel=info
+./build/trading_journal
 ```
+Open **http://localhost:18080**. The SQLite file `trading_journal.db` is created automatically on first run using `sql/schema.sql`. Register an account, then import `sample_data/sample_trades.csv` to see the dashboard populated.
 
-**[ADDED]** Verify the app is healthy via the monitoring endpoint:
+### Run Tests
 ```bash
-curl http://127.0.0.1:5000/health
+cd build && ctest --output-on-failure
 ```
 
-## 🧪 Testing
-* **Python Tier:** Run `pytest tests/` to execute unit tests for Flask routing, authentication, and database logic.
-* **C++ Tier:** Include Google Test (`gtest`) to write unit tests for mathematical correctness within the `Trade` and `Journal` classes.
-* **[ADDED] Continuous Integration:** GitHub Actions workflow runs `pytest` and `gtest` suites, plus a linter (`flake8`/`cppcheck`), on every pull request.
-* **[ADDED] Load Testing:** Use `locust` or `k6` to simulate concurrent users and validate performance of alert polling and report generation under load.
+### Minimal `CMakeLists.txt`
+```cmake
+cmake_minimum_required(VERSION 3.16)
+project(trading_journal LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-## 🔒 Security Considerations [ADDED]
-* **Password Storage:** Passwords are never stored in plaintext; hashed with `bcrypt` or `argon2` and a per-user salt.
-* **Two-Factor Authentication (2FA):** Optional TOTP-based 2FA via `pyotp`, compatible with standard authenticator apps.
-* **CSRF Protection:** All state-changing forms are protected via Flask-WTF CSRF tokens.
-* **Rate Limiting:** Login and password-reset endpoints are rate-limited to mitigate brute-force attacks.
-* **Session Security:** Secure, HTTP-only, same-site cookies; session timeout after inactivity.
-* **Data Isolation:** Row-level checks ensure a user can only ever query/modify their own `trades`, `watchlist`, and `alerts_log` rows.
+find_package(SQLite3 REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(Threads REQUIRED)
+find_library(SODIUM_LIB sodium REQUIRED)
 
-## 🔮 Future Expansion Considerations
-* **SQLite Integration Logic:** Currently, database retrieval logic resides in Python for simplicity. For maximum performance in a larger app, the SQLite C API could be integrated directly into the C++ `Journal` class.
-* **Handling `std::vector`:** Use `pybind11`'s `<pybind11/stl.h>` header to automatically convert C++ `std::vector` to Python lists when passing data between the languages.
-* **Advanced Dashboarding:** Expand the UI with a responsive, non-reloading dashboard utilizing AJAX/WebSockets for real-time analytics updates.
-* **[ADDED] Social/Community Features:** Optional, privacy-respecting sharing of anonymized trade setups or performance summaries with other users.
-* **[ADDED] Migration to PostgreSQL:** For multi-user production deployments at scale, migrate from SQLite to PostgreSQL for better concurrency handling.
-* **[ADDED] Direct Broker API Sync:** Move beyond CSV import to live, authenticated sync with broker APIs (e.g., Interactive Brokers TWS API, Alpaca) for automatic trade capture.
-* **[ADDED] Native Mobile Companion App:** A lightweight React Native/Flutter app for quick trade logging and push notifications, sharing the same REST API as the web app.
-* **[ADDED] AI-Assisted Trade Review:** Optional LLM-generated weekly/monthly summary of trading patterns, mistakes, and strengths based on logged notes and metrics.
+# Domain + data code as a library, so tests can link to it
+add_library(tj_core
+    src/trade.cpp src/journal.cpp src/position_calculator.cpp
+    src/csv_service.cpp src/database.cpp src/user_repository.cpp
+    src/trade_repository.cpp src/auth_service.cpp)
+target_include_directories(tj_core PUBLIC include third_party/crow)
+target_link_libraries(tj_core PUBLIC SQLite::SQLite3 nlohmann_json::nlohmann_json
+                      ${SODIUM_LIB} Threads::Threads)
 
-## 📄 Project Meta [ADDED]
-* **License:** Specify an open-source license (e.g., MIT) in a `LICENSE` file if the project is to be shared publicly.
-* **Contributing:** A `CONTRIBUTING.md` outlining coding standards (PEP8 for Python, a C++ style guide), branch naming, and PR review expectations.
-* **Changelog:** Maintain a `CHANGELOG.md` following Keep a Changelog conventions to track feature additions like the ones in this document over time.
+add_executable(trading_journal src/main.cpp src/routes.cpp)
+target_link_libraries(trading_journal PRIVATE tj_core)
+
+enable_testing()
+add_subdirectory(tests)
+```
+
+## 💻 Code Samples
+
+**`trade.hpp`**
+```cpp
+#pragma once
+#include <string>
+
+class Trade {
+public:
+    enum class Direction { Long, Short };
+
+    Trade(int id, std::string ticker, Direction dir, double entry,
+          double exit, int qty, double fees);
+
+    double profit() const;                 // const-correct: does not modify the object
+    bool   isWin() const { return profit() > 0; }
+    const std::string& ticker() const { return ticker_; }
+
+private:
+    int id_;
+    std::string ticker_;
+    Direction direction_;
+    double entry_, exit_, fees_;
+    int quantity_;
+};
+```
+
+**`journal.cpp` (drawdown)**
+```cpp
+double Journal::maxDrawdown() const {
+    double equity = 0.0, peak = 0.0, maxDd = 0.0;
+    for (const auto& t : trades_) {          // trades_ sorted by date
+        equity += t.profit();
+        peak = std::max(peak, equity);
+        maxDd = std::max(maxDd, peak - equity);
+    }
+    return maxDd;
+}
+```
+
+**A Crow route**
+```cpp
+CROW_ROUTE(app, "/api/equity-curve")([&](const crow::request& req) {
+    int userId = currentUserId(req);             // from session
+    auto trades = tradeRepo.search(userId, {});  // empty filter = all trades
+    Journal journal(trades);
+
+    nlohmann::json out = journal.equityCurve();  // vector<double> -> JSON array
+    return crow::response(200, "application/json", out.dump());
+});
+```
+
+**A unit test**
+```cpp
+TEST(JournalTest, ProfitFactorAndDrawdown) {
+    Journal j({ Trade(1,"AAPL",Trade::Direction::Long, 100,110,10,0),   // +100
+                Trade(2,"TSLA",Trade::Direction::Long, 200,190,5, 0),   // -50
+                Trade(3,"INFY",Trade::Direction::Short,50, 40, 10,0) });// +100
+    EXPECT_DOUBLE_EQ(j.profitFactor(), 4.0);   // 200 / 50
+    EXPECT_DOUBLE_EQ(j.maxDrawdown(), 50.0);
+}
+```
+
+## 🧪 Testing Plan
+* **Unit tests (GoogleTest):** `Trade::profit()` for long/short with and without fees; `Journal` metrics on hand-calculated datasets; edge cases (no trades, no losses, all losses); `PositionCalculator`.
+* **Manual test checklist:**
+  - Register with a duplicate username → error shown
+  - Wrong password → login fails
+  - User A cannot open User B's trade by changing the URL ID
+  - Add / edit / delete a trade updates the dashboard
+  - Filters return the correct rows
+  - Importing the same CSV twice does not create duplicates
+  - Exported CSV re-imports cleanly
+* **Memory checks:** build once with `-fsanitize=address,undefined` and click through every page; optionally run Valgrind.
+
+## 🔒 Security Basics Implemented
+* Passwords hashed with **Argon2id** (libsodium); plaintext is never stored.
+* **Prepared statements** everywhere, so no SQL injection.
+* Every trade query includes `WHERE user_id = ?`, so users are isolated from each other.
+* Session cookies are set HTTP-only; protected routes redirect to `/login` when there is no session.
+* All user-provided text is HTML-escaped by Mustache (`{{ }}`) to prevent XSS.
+
+## 🧠 C++ / OOP Concepts Demonstrated (for report & viva)
+| Concept | Where |
+|---|---|
+| Classes & encapsulation | `Trade`, `Journal`, repositories |
+| `const` correctness | `Trade::profit() const`, `Journal` getters |
+| RAII | `Database` (opens/closes `sqlite3*`), prepared-statement wrapper |
+| Smart pointers | `std::unique_ptr<Database>` shared via services; no raw `new`/`delete` |
+| STL containers & algorithms | `std::vector<Trade>`, `std::sort` by date, `std::accumulate`, `std::count_if`, `std::unordered_map` for tag grouping |
+| Enums / `enum class` | `Trade::Direction` |
+| `std::optional` | `findById()` and `findByUsername()` return `optional` |
+| Exception handling | DB errors and CSV parse errors thrown and caught in routes |
+| File I/O & string parsing | `CsvService` |
+| Lambdas | Filtering and sorting predicates |
+| Templates *(optional bonus)* | Generic `groupBy()` helper for tag analytics |
+| Inheritance & polymorphism *(optional bonus)* | `Repository` base interface → `SqliteTradeRepository` |
+
+## 📅 4-Week Timeline
+| Week | Milestone |
+|---|---|
+| **1** | Environment + CMake working; `Trade` and `Journal` classes with unit tests; Crow "Hello World" |
+| **2** | `Database` RAII wrapper, schema, repositories; trade CRUD pages |
+| **3** | Registration/login/sessions; per-user isolation; filters; dashboard metrics; Chart.js charts |
+| **4** | Position calculator, tag analytics, CSV import/export, polish UI, testing, report, demo prep |
+
+**Suggested split for a team of 3:**
+* *Member 1:* Domain layer (`Trade`, `Journal`, `PositionCalculator`) and tests
+* *Member 2:* Data layer (`Database`, repositories, CSV service) and auth
+* *Member 3:* Web layer (routes, templates, charts, styling)
+
+## ⚠️ Limitations
+* Uses SQLite, so it is suited to a few users, not heavy concurrent load.
+* Runs over plain HTTP on localhost; production would need HTTPS and CSRF tokens.
+* No live market data; all prices are entered manually.
+* Single currency, equities-style P&L only.
+
+## 🔮 Future Scope
+* Live market data, price alerts, and email/push notifications
+* Advanced statistics (Sharpe, Sortino, R-multiples), calendar P&L heatmap
+* Pre-trade checklists, trade replay timeline, chart annotations
+* Options/futures support, multi-currency, tax-lot accounting (FIFO/LIFO)
+* Strategy backtesting and correlation/exposure analysis
+* PDF reports, dark mode, PWA support, i18n
+* Token-based REST API, webhooks, 2FA, admin panel, encrypted backups
+* Migration to PostgreSQL, Docker + CI/CD, migration to the Drogon framework
+* AI-assisted trade review
+
+## 📄 Submission Checklist
+- [ ] Source code with clear commit history
+- [ ] `README.md` (this file) and a short project report
+- [ ] `sample_data/sample_trades.csv` for the demo
+- [ ] Screenshots of dashboard, trade list, and analytics
+- [ ] Unit tests passing (`ctest`)
+- [ ] Demo script: register → import sample CSV → view dashboard → filter → export
+
+## 📜 License
+MIT
