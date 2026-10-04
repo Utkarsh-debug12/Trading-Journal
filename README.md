@@ -7,7 +7,7 @@ This is a **mini project**. It is scoped to be finished by a team of 3 students 
 
 **Language split:** ~85% C++, ~15% HTML/CSS/JS.
 
-**Team balance:** each member owns roughly **900–1000 lines of C++**, a distinct set of core C++ concepts, their own tests, and one small web-facing slice, so everyone touches the full stack and no one is left with only HTML or only SQL.
+**Team balance:** each member owns roughly **950–1000 lines of C++**, a distinct set of core C++ concepts, their own tests, and one small web-facing slice, so everyone touches the full stack and no one is left with only HTML or only SQL.
 
 ## 🎯 Objectives
 1. Apply object-oriented C++ (classes, inheritance, polymorphism, RAII, STL) to a real problem.
@@ -59,7 +59,7 @@ A simple layered design:
  ┌────────────────────────────────────────┐
  │ Web Layer (Crow)                        │  routes, sessions, templates
  ├────────────────────────────────────────┤
- │ Service / Domain Layer                  │  Trade, Journal (analytics),
+ │ Service / Domain Layer                  │  Trade, Journal + IMetric strategies,
  │                                         │  PositionCalculator, Validators,
  │                                         │  AuthService, CsvService
  ├────────────────────────────────────────┤
@@ -76,7 +76,9 @@ The **Domain classes (`Trade`, `Journal`, `PositionCalculator`, validators) know
 | Class | Owner | Responsibility |
 |---|---|---|
 | `Trade` | A | One trade. `const` methods: `profit()`, `isWin()`, `riskRewardRatio()`. |
-| `Journal` | A | Holds `std::vector<Trade>`. Computes win rate, profit factor, expectancy, max drawdown, equity curve, streaks. |
+| `IMetric` | A | Abstract strategy interface for one analytics metric: `name()`, `compute(const std::vector<Trade>&) const`. |
+| `WinRate`, `ProfitFactor`, `Expectancy`, `MaxDrawdown` | A | Concrete metrics derived from `IMetric`; each holds one formula from the Analytics Formulas section. |
+| `Journal` | A | Holds `std::vector<Trade>` and a `std::vector<std::unique_ptr<IMetric>>`. Runs every metric polymorphically; also computes equity curve and streaks. Move-only because it owns `unique_ptr`s. |
 | `TagAnalytics` | A | Template `groupBy(trades, keyFn)` for average P&L and count per tag. |
 | `PositionCalculator` | A | Position size and risk/reward from account size, risk %, entry, stop. |
 | `Validators` | A | Server-side input rules (prices > 0, quantity > 0, valid date, direction). Throw `ValidationError`. |
@@ -159,6 +161,7 @@ trading_journal/
 ├── include/
 │   ├── errors.hpp                       [A]  (DatabaseError, ValidationError, CsvParseError)
 │   ├── trade.hpp                        [A]  (Trade, TradeFilter)
+│   ├── metrics.hpp                      [A]  (IMetric + WinRate, ProfitFactor, Expectancy, MaxDrawdown)
 │   ├── journal.hpp                      [A]
 │   ├── tag_analytics.hpp                [A]  (template groupBy)
 │   ├── position_calculator.hpp          [A]
@@ -176,6 +179,7 @@ trading_journal/
 │
 ├── src/
 │   ├── trade.cpp                        [A]
+│   ├── metrics.cpp                      [A]
 │   ├── journal.cpp                      [A]
 │   ├── tag_analytics.cpp                [A]
 │   ├── position_calculator.cpp          [A]
@@ -272,7 +276,7 @@ find_library(SODIUM_LIB sodium REQUIRED)
 # Domain + data + services as a library, so tests can link to it
 add_library(tj_core
     # Member A
-    src/trade.cpp src/journal.cpp src/tag_analytics.cpp
+    src/trade.cpp src/metrics.cpp src/journal.cpp src/tag_analytics.cpp
     src/position_calculator.cpp src/validators.cpp
     # Member B
     src/database.cpp src/statement.cpp src/user_repository.cpp
@@ -320,16 +324,65 @@ private:
 };
 ```
 
-**`journal.cpp` (drawdown)**
+**`metrics.hpp` / `metrics.cpp` (strategy interface + one derived metric)**
 ```cpp
-double Journal::maxDrawdown() const {
+// metrics.hpp
+class IMetric {
+public:
+    virtual ~IMetric() = default;                       // virtual destructor: safe delete via base pointer
+    virtual std::string name() const = 0;
+    virtual double compute(const std::vector<Trade>& trades) const = 0;
+};
+
+class MaxDrawdown : public IMetric {
+public:
+    std::string name() const override { return "Max Drawdown"; }
+    double compute(const std::vector<Trade>& trades) const override;
+};
+
+// metrics.cpp
+double MaxDrawdown::compute(const std::vector<Trade>& trades) const {
     double equity = 0.0, peak = 0.0, maxDd = 0.0;
-    for (const auto& t : trades_) {          // trades_ sorted by date
+    for (const auto& t : trades) {            // trades sorted by date
         equity += t.profit();
         peak = std::max(peak, equity);
         maxDd = std::max(maxDd, peak - equity);
     }
     return maxDd;
+}
+```
+
+**`journal.hpp` / `journal.cpp` (owns metrics through smart pointers)**
+```cpp
+class Journal {
+public:
+    explicit Journal(std::vector<Trade> trades);        // registers the 4 default metrics
+    Journal(Journal&&) = default;                       // move-only: owns unique_ptrs
+    Journal& operator=(Journal&&) = default;
+
+    void addMetric(std::unique_ptr<IMetric> m) { metrics_.push_back(std::move(m)); }
+    std::vector<std::pair<std::string,double>> computeAll() const;
+
+    double maxDrawdown() const;                         // convenience: looks up the MaxDrawdown metric
+    // winRate(), profitFactor(), expectancy() work the same way
+
+private:
+    std::vector<Trade> trades_;
+    std::vector<std::unique_ptr<IMetric>> metrics_;
+};
+
+Journal::Journal(std::vector<Trade> trades) : trades_(std::move(trades)) {
+    metrics_.push_back(std::make_unique<WinRate>());
+    metrics_.push_back(std::make_unique<ProfitFactor>());
+    metrics_.push_back(std::make_unique<Expectancy>());
+    metrics_.push_back(std::make_unique<MaxDrawdown>());
+}
+
+std::vector<std::pair<std::string,double>> Journal::computeAll() const {
+    std::vector<std::pair<std::string,double>> out;
+    for (const auto& m : metrics_)                      // runtime polymorphism
+        out.emplace_back(m->name(), m->compute(trades_));
+    return out;
 }
 ```
 
@@ -358,7 +411,7 @@ TEST(JournalTest, ProfitFactorAndDrawdown) {
 
 ## 🧪 Testing Plan
 * **Unit tests (GoogleTest), by owner:**
-  - **A:** `Trade::profit()` for long/short with and without fees; `Journal` metrics on hand-calculated datasets; edge cases (no trades, no losses, all losses); `PositionCalculator`; validators (bad price, zero quantity, bad date, bad direction).
+  - **A:** `Trade::profit()` for long/short with and without fees; each `IMetric` subclass on hand-calculated datasets, called both directly and through `Journal::computeAll()` (polymorphism check); `Journal` with a custom metric added via `addMetric()`; edge cases (no trades, no losses, all losses); `PositionCalculator`; validators (bad price, zero quantity, bad date, bad direction).
   - **B:** repository CRUD on in-memory SQLite (`:memory:`); user isolation ("User A cannot read User B's trade"); `search()` filters; `existsDuplicate()`; transaction rollback on failed bulk insert; both repository implementations pass the same test suite.
   - **C:** CSV (quoted fields, bad numbers, missing columns, round-trip export→import); `AuthService` (hash verifies, wrong password fails, duplicate username rejected); route integration tests for key flows.
 * **Manual test checklist:**
@@ -390,8 +443,9 @@ TEST(JournalTest, ProfitFactorAndDrawdown) {
 | Custom exception hierarchy | `errors.hpp`: `DatabaseError`, `ValidationError`, `CsvParseError` (all derive from `std::runtime_error`) | A (defined), all (used) |
 | RAII | `Database` (opens/closes `sqlite3*`), `Statement` (finalizes `sqlite3_stmt*`) | B |
 | Move semantics | `Database` and `Statement` are non-copyable, movable | B |
-| Smart pointers | `std::unique_ptr<ITradeRepository>` / `std::shared_ptr<Database>`; no raw `new`/`delete` | B, C |
+| Smart pointers | `Journal` owns `std::vector<std::unique_ptr<IMetric>>` (A); `std::unique_ptr<ITradeRepository>` / `std::shared_ptr<Database>` (B, C); no raw `new`/`delete` | A, B, C |
 | `std::optional` | `findById()`, `findByUsername()`, `login()` return `optional` | B, C |
+| Inheritance & polymorphism | `IMetric` → `WinRate`, `ProfitFactor`, `Expectancy`, `MaxDrawdown` (strategy pattern, virtual destructor, `override`) | A |
 | Inheritance & polymorphism | `ITradeRepository` → `SqliteTradeRepository`, `InMemoryTradeRepository` | B |
 | Transactions & C-library interop | `BEGIN`/`COMMIT`/`ROLLBACK`, sqlite3 C API | B |
 | File I/O & string parsing | `CsvService` | C |
@@ -409,9 +463,9 @@ The project is split **vertically by layer**, and the original split has been **
 | | **Member A: Domain & Analytics** | **Member B: Persistence** | **Member C: Services & Web** |
 |---|---|---|---|
 | **Theme** | The "brain": trade math, analytics, validation, analytics pages | The "memory": SQLite, repositories, the storage interface | The "face": auth, CSV, middleware, HTTP server, trade CRUD pages |
-| **C++ files** | `errors.hpp`, `trade.*`, `journal.*`, `tag_analytics.*`, `position_calculator.*`, `validators.*`, `view_models_analytics.*`, `routes_analytics.cpp` | `database.*`, `statement.*`, `user_repository.*`, `trade_repository.*` (`ITradeRepository` + `SqliteTradeRepository`), `in_memory_trade_repository.*`, `sql/schema.sql` | `auth_service.*`, `csv_service.*`, `middleware.*`, `routes.hpp`, `main.cpp`, `routes_auth.cpp`, `routes_trades.cpp`, `routes_io.cpp` |
-| **Approx. C++ size** | ~950 lines | ~1000 lines | ~950 lines |
-| **Core concepts** | `const` correctness, `enum class`, STL algorithms, lambdas, **templates**, exceptions | **RAII**, **move semantics**, smart pointers, `std::optional`, **inheritance & polymorphism**, transactions | File I/O, string parsing, **middleware pattern**, **dependency injection**, `std::function`, libsodium interop |
+| **C++ files** | `errors.hpp`, `trade.*`, `metrics.*`, `journal.*`, `tag_analytics.*`, `position_calculator.*`, `validators.*`, `view_models_analytics.*`, `routes_analytics.cpp` | `database.*`, `statement.*`, `user_repository.*`, `trade_repository.*` (`ITradeRepository` + `SqliteTradeRepository`), `in_memory_trade_repository.*`, `sql/schema.sql` | `auth_service.*`, `csv_service.*`, `middleware.*`, `routes.hpp`, `main.cpp`, `routes_auth.cpp`, `routes_trades.cpp`, `routes_io.cpp` |
+| **Approx. C++ size** | ~1000 lines | ~1000 lines | ~950 lines |
+| **Core concepts** | `const` correctness, `enum class`, STL algorithms, lambdas, **templates**, exceptions, **inheritance & polymorphism** (`IMetric`), **smart pointers** (`unique_ptr` in `Journal`) | **RAII**, **move semantics**, smart pointers, `std::optional`, **inheritance & polymorphism**, transactions | File I/O, string parsing, **middleware pattern**, **dependency injection**, `std::function`, libsodium interop |
 | **Frontend** | `dashboard.html`, `by_tag.html`, `calculator.html`, `charts.js` | None (heaviest C++) | `base`, `login`, `register`, `trades`, `trade_form`, `404`, `500`, `style.css` |
 | **Tests** | `test_trade`, `test_journal`, `test_position_calculator`, `test_validators` | `test_repository` | `test_csv`, `test_auth`, `test_routes` |
 | **Depends on** | Nobody for core logic; uses B's `ITradeRepository` and C's `currentUserId()` only in `routes_analytics.cpp` | A's `Trade` / `TradeFilter` / `errors.hpp` | A's `Trade` and validators; B's `ITradeRepository` and `UserRepository` |
@@ -426,6 +480,7 @@ The project is split **vertically by layer**, and the original split has been **
 | `AuthService` | B → C | Pairs with sessions and middleware; still shows C-library interop (libsodium) |
 | `CsvService` | A → C | File I/O and parsing pair with import/export routes; C calls B's `existsDuplicate()` |
 | `routes.cpp` | one file → four files | One route file per owner/feature avoids merge conflicts |
+| `IMetric` hierarchy and `unique_ptr` ownership in `Journal` | new, A | Gives A real inheritance, polymorphism and smart-pointer ownership, so OOP concepts are spread more evenly |
 
 ### 🅰️ Member A: Domain & Analytics
 **Mission:** all financial logic and input validation, with correct and tested results, plus the analytics pages built on top of it.
@@ -433,15 +488,16 @@ The project is split **vertically by layer**, and the original split has been **
 Responsibilities:
 1. **`errors.hpp`**: exception hierarchy (`DatabaseError`, `ValidationError`, `CsvParseError`) derived from `std::runtime_error`.
 2. **`Trade`** and **`TradeFilter`**: immutable-style class with getters, `profit()` (long/short, fees), `isWin()`, `riskRewardRatio()`; filter struct of `std::optional` fields.
-3. **`Journal`**: `std::vector<Trade>` wrapper with `totalPnL()`, `winRate()`, `profitFactor()`, `expectancy()`, `avgWin()`, `avgLoss()`, `maxDrawdown()`, `equityCurve()`, `longestWinStreak()`, `longestLossStreak()`, and `filterByResult(Win|Loss)`.
-4. **`TagAnalytics`**: generic `groupBy(trades, keyFn)` **template** to compute average P&L and count per strategy/emotion tag.
-5. **`PositionCalculator`**: position size from account size, risk %, entry, stop-loss; risk/reward ratio; input validation with exceptions.
-6. **`validators.*`**: server-side form rules (prices > 0, quantity > 0, valid ISO date, direction ∈ {Long, Short}) throwing `ValidationError` with clear messages.
-7. **`routes_analytics.cpp` + `view_models_analytics.*`**: `/`, `/analytics/by-tag`, `/calculator`, `/api/equity-curve`, `/api/pnl-per-trade`; convert `Journal` results into Mustache contexts and JSON.
-8. **Frontend slice**: `dashboard.html`, `by_tag.html`, `calculator.html`, `charts.js`.
-9. **Unit tests** for everything above, using hand-calculated expected values.
+3. **`IMetric` strategy hierarchy** (`metrics.*`): abstract `IMetric` (`name()`, `compute(trades)`, virtual destructor) with derived `WinRate`, `ProfitFactor`, `Expectancy`, `MaxDrawdown`, all marked `override`.
+4. **`Journal`**: owns a `std::vector<Trade>` and a `std::vector<std::unique_ptr<IMetric>>` (move-only). Provides `computeAll()`, `addMetric()`, convenience getters `winRate()`, `profitFactor()`, `expectancy()`, `maxDrawdown()` that delegate to the metric objects, plus `totalPnL()`, `avgWin()`, `avgLoss()`, `equityCurve()`, `longestWinStreak()`, `longestLossStreak()`, and `filterByResult(Win|Loss)`.
+5. **`TagAnalytics`**: generic `groupBy(trades, keyFn)` **template** to compute average P&L and count per strategy/emotion tag.
+6. **`PositionCalculator`**: position size from account size, risk %, entry, stop-loss; risk/reward ratio; input validation with exceptions.
+7. **`validators.*`**: server-side form rules (prices > 0, quantity > 0, valid ISO date, direction ∈ {Long, Short}) throwing `ValidationError` with clear messages.
+8. **`routes_analytics.cpp` + `view_models_analytics.*`**: `/`, `/analytics/by-tag`, `/calculator`, `/api/equity-curve`, `/api/pnl-per-trade`; convert `Journal` results into Mustache contexts and JSON.
+9. **Frontend slice**: `dashboard.html`, `by_tag.html`, `calculator.html`, `charts.js`.
+10. **Unit tests** for everything above, using hand-calculated expected values.
 
-Viva topics: why `profit()` is `const`; how drawdown is computed; how `groupBy<T>` is instantiated; how validators throw and where the exceptions are caught.
+Viva topics: why `profit()` is `const`; how drawdown is computed; why `IMetric` needs a virtual destructor and how `Journal` calls metrics polymorphically; why `Journal` is move-only because of `unique_ptr`; how `groupBy<T>` is instantiated; how validators throw and where the exceptions are caught.
 
 ### 🅱️ Member B: Persistence
 **Mission:** safe, correct persistence with all SQL hidden behind classes, plus the storage interface the rest of the team codes against.
@@ -484,7 +540,8 @@ These headers are written **first** so all three members can work in parallel.
 | `errors.hpp` | A | `DatabaseError`, `ValidationError`, `CsvParseError`, all derived from `std::runtime_error` |
 | `Trade` | A | `Trade(int id, int userId, std::string ticker, Direction, double entry, double exit, int qty, double fees, std::string tradeDate, ...)`; getters; `double profit() const` |
 | `TradeFilter` | A | `struct` of `std::optional` fields: `ticker`, `fromDate`, `toDate`, `direction`, `strategy`, `emotion` |
-| `Journal` | A | `explicit Journal(std::vector<Trade>)`; `winRate()`, `profitFactor()`, `expectancy()`, `maxDrawdown()`, `equityCurve()`, `filterByResult(Result)` |
+| `IMetric` | A | `virtual std::string name() const = 0`; `virtual double compute(const std::vector<Trade>&) const = 0`; virtual destructor |
+| `Journal` | A | `explicit Journal(std::vector<Trade>)` (move-only); `computeAll()`, `addMetric(std::unique_ptr<IMetric>)`; `winRate()`, `profitFactor()`, `expectancy()`, `maxDrawdown()`, `equityCurve()`, `filterByResult(Result)` |
 | `PositionCalculator` | A | `PositionResult calculate(double account, double riskPct, double entry, double stop)` |
 | `Validators` | A | `Trade validateTradeForm(const FormData&, int userId)`; throws `ValidationError` |
 | `ITradeRepository` | B | `int add(const Trade&)`; `bool update(const Trade&)`; `bool remove(int userId, int tradeId)`; `std::optional<Trade> findById(int userId, int id)`; `std::vector<Trade> search(int userId, const TradeFilter&)`; `bool existsDuplicate(int userId, const Trade&)`; `int addBulk(const std::vector<Trade>&)` (transactional) |
@@ -521,7 +578,7 @@ These headers are written **first** so all three members can work in parallel.
 ### Phase 1: Foundations in Parallel (Week 1)
 | | Tasks |
 |---|---|
-| **A** | 1. `Trade` with `profit()` (long/short, fees), `isWin()`, `riskRewardRatio()`. 2. Basic `Journal`: `totalPnL`, `winRate`, `avgWin`, `avgLoss`. 3. First GoogleTest cases (long win, short win, loss, fees, empty journal). |
+| **A** | 1. `Trade` with `profit()` (long/short, fees), `isWin()`, `riskRewardRatio()`. 2. `IMetric` interface and the first derived metric `WinRate`. 3. Basic `Journal` holding `std::vector<std::unique_ptr<IMetric>>`: `totalPnL`, `avgWin`, `avgLoss`, `computeAll()`. 4. First GoogleTest cases (long win, short win, loss, fees, empty journal, `WinRate` via the interface). |
 | **B** | 1. `Database` RAII class (non-copyable, movable) + `schema.sql` auto-run + foreign keys on. 2. `Statement` wrapper (bind/step/columns, move-only). 3. `UserRepository` with `create` / `findByUsername`. 4. **`InMemoryTradeRepository`** (push by mid-week so others can use it). 5. Tests on `:memory:`. |
 | **C** | 1. Crow app skeleton in `main.cpp` with static files, `CookieParser`, `SessionMiddleware`. 2. `AuthService` (Argon2id hash/verify, username/password rules) + `test_auth`. 3. `base.html`, `login.html`, `register.html`. 4. Route stubs for every URL; wire to `InMemoryTradeRepository` once B pushes it (until then, a hard-coded vector). |
 
@@ -532,7 +589,7 @@ These headers are written **first** so all three members can work in parallel.
 ### Phase 2: Core Features (Week 2)
 | | Tasks |
 |---|---|
-| **A** | 1. `profitFactor`, `expectancy`, `maxDrawdown`, `equityCurve`. 2. Win/loss streaks and `filterByResult`. 3. `PositionCalculator` with exception-based validation. 4. `validators.*` (price/quantity/date/direction rules) + `test_validators`. 5. Edge-case tests (no losses, all losses, single trade, flat equity). |
+| **A** | 1. Derived metrics `ProfitFactor`, `Expectancy`, `MaxDrawdown` (register all four in `Journal`); `equityCurve`. 2. Win/loss streaks and `filterByResult`. 3. `PositionCalculator` with exception-based validation. 4. `validators.*` (price/quantity/date/direction rules) + `test_validators`. 5. Edge-case tests (no losses, all losses, single trade, flat equity). |
 | **B** | 1. `SqliteTradeRepository`: `add`, `update`, `remove`, `findById`, all scoped by `user_id`. 2. `search()` with dynamic filters using bound parameters. 3. Indexes on `(user_id, trade_date)`. 4. Repository tests (including "User A cannot read User B's trade"), run against both implementations. |
 | **C** | 1. `/register`, `/login`, `/logout` in `routes_auth.cpp`; session cookie handling. 2. `AuthGuard` middleware and `currentUserId()`. 3. Trade CRUD routes, `trades.html`, `trade_form.html`, using A's validators. 4. **Switch to `SqliteTradeRepository`** once B's tests pass (one-line change in `main.cpp`). |
 
@@ -579,8 +636,8 @@ These headers are written **first** so all three members can work in parallel.
 | Area | A | B | C |
 |---|:---:|:---:|:---:|
 | Algorithms / logic | ●●● | ●○○ | ●●○ |
-| OOP design (classes, interfaces) | ●●○ | ●●● | ●●○ |
-| Memory management / RAII | ●○○ | ●●● | ●○○ |
+| OOP design (classes, interfaces) | ●●● | ●●● | ●●○ |
+| Memory management / RAII / smart pointers | ●●○ | ●●● | ●○○ |
 | Templates / STL | ●●● | ●○○ | ●○○ |
 | Exceptions & validation | ●●● | ●●○ | ●●○ |
 | File I/O & parsing | ○○○ | ○○○ | ●●● |
