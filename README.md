@@ -1,13 +1,10 @@
-- [ ]
 
   # Trading Journal: A C++ Web Application (Simplified Mini Project)
 
-* [ ] *Simplified edition: same core idea, about 40% less code, 3 weeks of work plus 1 spare week.*
+ *Simplified edition: same core idea, about 40% less code, 3 weeks of work plus 1 spare week.*
 
 ## Project Overview
 
-```
-```
 
 The Trading Journal is a small web application where a trader can **log trades, review them, and see basic performance numbers**. The backend (web server, routing, login, database access, analytics) is written in **C++17**. The browser side is plain HTML, Bootstrap, and one small Chart.js chart.
 
