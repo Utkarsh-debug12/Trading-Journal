@@ -9,10 +9,10 @@
 
 class Trade {
 public:
-    /// Direction of the position.
+    // Direction of the position.
     enum class Direction { Long, Short };
 
-    /// Construct a fully-populated trade record.
+    // Construct a fully-populated trade record.
     Trade(int id, int userId, std::string ticker, Direction dir,
           double entry, double exit, int qty, double fees,
           std::string tradeDate, std::string notes = "");
@@ -32,32 +32,32 @@ public:
 
     // -- computed properties ------------------------------------------------
 
-    /// Net profit of the trade.
-    ///   Long:  (exit - entry) × quantity - fees
-    ///   Short: (entry - exit) × quantity - fees
+    // Net profit of the trade.
+    //   Long:  (exit - entry) × quantity - fees
+    //   Short: (entry - exit) × quantity - fees
     double profit() const;
 
-    /// A trade is a win when its profit is strictly positive.
+    // A trade is a win when its profit is strictly positive.
     bool isWin() const {return profit() > 0;}
 
     // -- operator overloading -----------------------------------------------
 
-    /// Sort by trade date.
+    // Sort by trade date.
     bool operator<(const Trade& o) const {return tradeDate_ < o.tradeDate_;}
 
-    /// Two trades are equal when all fields match.
+    // Two trades are equal when all fields match.
     bool operator==(const Trade& o) const;
 
-    /// Stream insertion for logging and GoogleTest output.
+    // Stream insertion for logging and GoogleTest output.
     friend std::ostream& operator<<(std::ostream& os, const Trade& t);
 
     // -- static helpers for the Direction enum ------------------------------
 
-    /// Returns "Long" or "Short".
+    // Returns "Long" or "Short".
     static std::string toString(Direction d);
 
-    /// Parses "Long" or "Short" (case-sensitive); throws ValidationError
-    /// if the string is invalid.
+    // Parses "Long" or "Short" (case-sensitive); throws ValidationError
+    // if the string is invalid.
     static Direction fromString(const std::string& s);
 
 private:
@@ -78,6 +78,6 @@ private:
 // ---------------------------------------------------------------------------
 
 struct TradeFilter {
-    std::optional<std::string> ticker;     ///< filter by ticker symbol
-    std::optional<bool>        winOnly;    ///< true = wins, false = losses, empty = all
+    std::optional<std::string> ticker;     //< filter by ticker symbol
+    std::optional<bool> winOnly;     //< true = wins, false = losses, empty = all
 };
