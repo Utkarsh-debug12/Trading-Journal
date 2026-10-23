@@ -125,43 +125,65 @@ Each route file exposes one registration function declared in `routes.hpp`, for 
 
 ```
 trading_journal/
-+-- CMakeLists.txt                       [C]
-+-- README.md
-+-- third_party/crow/crow_all.h
-+-- include/
-|   +-- errors.hpp                       [A]  AppError, DatabaseError, ValidationError
-|   +-- trade.hpp                        [A]  Trade, TradeFilter
-|   +-- metrics.hpp                      [A]  IMetric + WinRate, ProfitFactor, MaxDrawdown, TotalPnL
-|   +-- journal.hpp                      [A]
-|   +-- validators.hpp                   [A]
-|   +-- database.hpp                     [B]
-|   +-- statement.hpp                    [B]
-|   +-- user_repository.hpp              [B]
-|   +-- trade_repository.hpp             [B]  ITradeRepository + SqliteTradeRepository
-|   +-- in_memory_trade_repository.hpp   [B]
-|   +-- auth_service.hpp                 [C]
-|   +-- middleware.hpp                   [C]
-|   +-- routes.hpp                       [C]
-+-- src/
-|   +-- trade.cpp  metrics.cpp  journal.cpp  validators.cpp  routes_analytics.cpp      [A]
-|   +-- database.cpp  statement.cpp  user_repository.cpp                  [B]
-|   +-- trade_repository.cpp  in_memory_trade_repository.cpp              [B]
-|   +-- auth_service.cpp  middleware.cpp  routes_auth.cpp                 [C]
-|   +-- routes_trades.cpp  (includes /export)  main.cpp                   [C]
-+-- templates/
-|   +-- dashboard.html                                                    [A]
-|   +-- base.html  login.html  register.html  trades.html  trade_form.html [C]
-+-- static/
-|   +-- js/charts.js                                                      [A]
-|   +-- css/style.css                                                     [C]
-+-- sql/
-|   +-- schema.sql                                                        [B]
-|   +-- seed.sql   (20 sample trades for the demo)                        [A]
-+-- tests/
-    +-- CMakeLists.txt
-    +-- test_trade.cpp  test_journal.cpp  test_metrics.cpp  test_validators.cpp             [A]
-    +-- test_repository.cpp                                               [B]
-    +-- test_auth.cpp                                                     [C]
+├── CMakeLists.txt                         [C]  CMake build configuration
+├── demo.sh                                [C]  Automated build, seed, and run script
+├── PROJECT_FILES_BY_MEMBER.md                  Team ownership & architecture matrix
+├── README.md                                   Comprehensive project documentation
+├── .gitignore                                  Git ignore rules (binaries, DB, etc.)
+│
+├── include/
+│   ├── errors.hpp                         [A]  AppError, DatabaseError, ValidationError
+│   ├── trade.hpp                          [A]  Trade entity, Direction enum, TradeFilter
+│   ├── metrics.hpp                        [A]  IMetric interface + WinRate, ProfitFactor, MaxDrawdown, TotalPnL
+│   ├── journal.hpp                        [A]  Move-only Journal class, sumProfit template
+│   ├── validators.hpp                     [A]  Form and trade validation logic
+│   ├── database.hpp                       [B]  RAII sqlite3* connection wrapper
+│   ├── statement.hpp                      [B]  RAII sqlite3_stmt* query wrapper
+│   ├── user_repository.hpp                [B]  User DAO interface/repository
+│   ├── trade_repository.hpp               [B]  ITradeRepository + SqliteTradeRepository
+│   ├── in_memory_trade_repository.hpp     [B]  InMemoryTradeRepository for mock/testing
+│   ├── auth_service.hpp                   [C]  Password hashing and authentication service
+│   ├── middleware.hpp                     [C]  AuthGuard middleware and session management
+│   └── routes.hpp                         [C]  Shared dependency container and route signatures
+│
+├── src/
+│   ├── trade.cpp                          [A]  Trade implementation and operator overloads
+│   ├── metrics.cpp                        [A]  Financial metric implementations
+│   ├── journal.cpp                        [A]  Journal analytics and equity curve logic
+│   ├── validators.cpp                     [A]  Input validator implementations
+│   ├── routes_analytics.cpp               [A]  Dashboard and equity-curve API routes
+│   ├── database.cpp                       [B]  Database connection and initialization
+│   ├── statement.cpp                      [B]  Prepared statement execution & binding
+│   ├── user_repository.cpp                [B]  User database queries
+│   ├── trade_repository.cpp               [B]  SQLite trade repository queries
+│   ├── in_memory_trade_repository.cpp     [B]  In-memory mock trade storage
+│   ├── main.cpp                           [C]  Application entry point and server setup
+│   ├── auth_service.cpp                   [C]  Argon2id password hashing logic
+│   ├── middleware.cpp                     [C]  Session verification and redirect handling
+│   ├── routes_auth.cpp                    [C]  Login, register, and logout routes
+│   └── routes_trades.cpp                  [C]  Trade CRUD and CSV export routes
+│
+├── templates/
+│   ├── dashboard.html                     [A]  Analytics dashboard with chart canvas
+│   ├── base.html                          [C]  Shared navigation and layout skeleton
+│   ├── login.html                         [C]  User login form
+│   ├── register.html                      [C]  User registration form
+│   ├── trades.html                        [C]  Trade list and filter table
+│   └── trade_form.html                    [C]  Add/edit trade form
+│
+├── static/
+│   ├── js/
+│   │   └── charts.js                      [A]  Chart.js equity curve visualization
+│   └── css/
+│       └── style.css                      [C]  Custom stylesheet and styling
+│
+├── sql/
+│   ├── schema.sql                         [B]  SQLite schema for users and trades
+│   └── seed.sql                           [A]  20 sample trades for demo analytics
+│
+└── third_party/
+    └── crow/
+        └── crow_all.h                     [External]  Crow C++ single-header web framework
 ```
 
 ## Installation and Setup
@@ -194,10 +216,10 @@ cmake --build build -j
 
 Open **http://localhost:18080**. The SQLite file is created on first run from `sql/schema.sql`. To see demo data, register a user and run `sqlite3 trading_journal.db < sql/seed.sql` (edit the `user_id` in the file if needed).
 
-### Run Tests
+### Run Demo Script
 
 ```bash
-cd build && ctest --output-on-failure
+./demo.sh
 ```
 
 ### Minimal `CMakeLists.txt`
@@ -210,23 +232,27 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SQLite3 REQUIRED)
 find_package(Threads REQUIRED)
-find_library(SODIUM_LIB sodium REQUIRED)
+find_library(SODIUM_LIB NAMES sodium REQUIRED)
+
+set(SQLITE_TARGET SQLite::SQLite3)
+if(TARGET SQLite3::SQLite3)
+    set(SQLITE_TARGET SQLite3::SQLite3)
+endif()
 
 add_library(tj_core
     src/trade.cpp src/metrics.cpp src/journal.cpp src/validators.cpp           # A
-    src/database.cpp src/statement.cpp src/user_repository.cpp # B
-    src/trade_repository.cpp src/in_memory_trade_repository.cpp
-    src/auth_service.cpp)                                      # C
+    src/database.cpp src/statement.cpp src/user_repository.cpp                 # B
+    src/in_memory_trade_repository.cpp src/trade_repository.cpp                # B
+    src/auth_service.cpp src/middleware.cpp)                                   # C
 target_include_directories(tj_core PUBLIC include third_party/crow)
-target_link_libraries(tj_core PUBLIC SQLite::SQLite3 ${SODIUM_LIB} Threads::Threads)
+target_link_libraries(tj_core PUBLIC ${SQLITE_TARGET} ${SODIUM_LIB} Threads::Threads)
 
 add_executable(trading_journal
-    src/main.cpp src/middleware.cpp src/routes_auth.cpp
-    src/routes_trades.cpp src/routes_analytics.cpp)
+    src/main.cpp
+    src/routes_auth.cpp
+    src/routes_trades.cpp
+    src/routes_analytics.cpp)
 target_link_libraries(trading_journal PRIVATE tj_core)
-
-enable_testing()
-add_subdirectory(tests)
 ```
 
 ## Code Samples
