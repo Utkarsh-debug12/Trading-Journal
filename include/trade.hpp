@@ -42,8 +42,13 @@ public:
 
     // -- operator overloading -----------------------------------------------
 
-    // Sort by trade date.
-    bool operator<(const Trade& o) const {return tradeDate_ < o.tradeDate_;}
+    // Sort by trade date, tie-breaking by id.
+    bool operator<(const Trade& o) const {
+        if (tradeDate_ != o.tradeDate_) {
+            return tradeDate_ < o.tradeDate_;
+        }
+        return id_ < o.id_;
+    }
 
     // Two trades are equal when all fields match.
     bool operator==(const Trade& o) const;
@@ -78,6 +83,9 @@ private:
 // ---------------------------------------------------------------------------
 
 struct TradeFilter {
-    std::optional<std::string> ticker;     //< filter by ticker symbol
-    std::optional<bool> winOnly;     //< true = wins, false = losses, empty = all
+    std::optional<std::string> ticker;         //< filter by ticker symbol
+    std::optional<bool> winOnly;               //< true = wins, false = losses, empty = all
+    std::optional<Trade::Direction> direction; //< filter by Long / Short
+    std::optional<std::string> startDate;     //< filter by tradeDate >= startDate (YYYY-MM-DD)
+    std::optional<std::string> endDate;       //< filter by tradeDate <= endDate (YYYY-MM-DD)
 };
