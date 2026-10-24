@@ -127,7 +127,6 @@ Each route file exposes one registration function declared in `routes.hpp`, for 
 trading_journal/
 ├── CMakeLists.txt                         [C]  CMake build configuration
 ├── demo.sh                                [C]  Automated build, seed, and run script
-├── PROJECT_FILES_BY_MEMBER.md                  Team ownership & architecture matrix
 ├── README.md                                   Comprehensive project documentation
 ├── .gitignore                                  Git ignore rules (binaries, DB, etc.)
 │
