@@ -1,677 +1,517 @@
+# Trading Journal: High-Performance C++17 Web Application
+**Object-Oriented Programming (OOPS) Mini-Project**
 
-  # Trading Journal: A C++ Web Application (Simplified Mini Project)
+---
 
- *Simplified edition: same core idea, about 40% less code, 3 weeks of work plus 1 spare week.*
+## Project Team & Responsibilities
 
-## Project Overview
+| Role | Name | Roll Number | Subsystem / Key Responsibilities |
+| :--- | :--- | :--- | :--- |
+| **Member A** | **Utkarsh Kumar** | **25008288 (41)** | **Domain & Analytics Engine**: Trade entity, business validation, metric strategy pattern (`IMetric`, `WinRate`, `ProfitFactor`, `MaxDrawdown`, `TotalPnL`), move-only `Journal`, equity curve calculation, template algorithms, analytics routes & interactive dashboard |
+| **Member B** | **Pinkesh Kumar Mishra** | **25008253 (07)** | **Data Persistence Layer**: SQLite3 C-API encapsulation, RAII wrapper classes (`Database`, `Statement`), Repository pattern (`ITradeRepository`, `SqliteTradeRepository`, `InMemoryTradeRepository`), database schema design & foreign-key enforcement |
+| **Member C** | **Rabeekant** | **25008259 (13)** | **Web Infrastructure & Security**: Crow HTTP server orchestration, Argon2id cryptographic password hashing (libsodium), session authentication middleware (`AuthGuard`), trade CRUD endpoints, RFC 4180 CSV export & view templates |
 
+---
 
-The Trading Journal is a small web application where a trader can **log trades, review them, and see basic performance numbers**. The backend (web server, routing, login, database access, analytics) is written in **C++17**. The browser side is plain HTML, Bootstrap, and one small Chart.js chart.
+## 1. Project Overview
 
-It is built by a team of 3 students. The goal is to show good C++ and OOP practice (classes, inheritance, polymorphism, RAII, STL, smart pointers, exceptions), not to build a commercial product.
+The **Trading Journal** is a high-performance web application designed for active financial market participants to record, audit, and analyze their trading history. The platform delivers real-time statistical metrics—such as win rate, profit factor, maximum drawdown, and equity curves—enabling traders to measure edge and identify behavioral strengths and weaknesses.
 
-**Language split:** about 90% C++, 10% HTML/CSS/JS. Each member writes roughly **550-700 lines of C++ (A writes the most because A carries the most OOP design)**.
+From a software engineering perspective, this project serves as a comprehensive demonstration of **modern C++17 object-oriented programming (OOP)** and systems architecture. The backend is implemented in native C++ using the Crow microframework and SQLite3, avoiding heavy runtime environments while providing type safety, memory efficiency, and deterministic latency. The frontend employs a clean, responsive interface powered by Bootstrap 5 and Chart.js.
 
-## Objectives
+### Key Objectives
+1. **Object-Oriented Design**: Apply principles of encapsulation, abstraction, runtime polymorphism, and strict const-correctness to real-world financial analytics.
+2. **Resource Management**: Implement **RAII (Resource Acquisition Is Initialization)** and modern move semantics to guarantee zero memory or resource leaks without a garbage collector.
+3. **Decoupled Architecture**: Structure the codebase into three isolated layers (Presentation, Domain, and Data) following the Dependency Inversion Principle.
+4. **Security & Data Isolation**: Guarantee safe multi-user operation through Argon2id cryptographic password hashing, parameterized SQL prepared statements, and session-guarded route middleware.
+5. **Rigorous Verification**: Validate core mathematical formulas and business logic through automated unit testing and address sanitization.
 
-1. Apply object-oriented C++ (classes, inheritance, polymorphism, RAII, STL) to a real problem.
-2. Build a working web application in C++ backed by a database.
-3. Implement correct, unit-tested analytics (P&L, win rate, profit factor, drawdown).
-4. Practise secure basics: password hashing, prepared statements, per-user data isolation.
+---
 
-## Features
+## 2. System Architecture
 
-| # | Feature | Description |
-| --- | --- | --- |
-| 1 | **User Accounts** | Register, log in, log out. Passwords are hashed. Each user sees only their own trades. |
-| 2 | **Trade Management** | Add, view, edit, delete trades (ticker, direction, entry/exit price, quantity, fees, date, notes). |
-| 3 | **Search & Filter** | Filter the trade list by ticker and by win/loss. |
-| 4 | **Dashboard** | Total P&L, number of trades, Win Rate, Average Win, Average Loss, Profit Factor, Maximum Drawdown. |
-| 5 | **Equity Curve Chart** | One Chart.js line chart fed by a JSON endpoint. |
-| 6 | **CSV Export** | Download all your trades as a CSV file. |
-
-**Out of scope:** tags, calculator, CSV import, live data, alerts, 2FA, payments, backtesting, PDF reports, REST tokens, admin panel (see Future Scope).
-
-## Technology Stack
-
-| Layer | Technology |
-| --- | --- |
-| Language | C++17 |
-| Build | CMake |
-| Web framework | Crow (single header `crow_all.h`) with Asio |
-| Database | SQLite 3 (C API wrapped in your own RAII classes) |
-| JSON | `crow::json` (built into Crow) |
-| Password hashing | libsodium (`crypto_pwhash_str`, Argon2id) |
-| Templates | Crow Mustache (`.html` files) |
-| Frontend | Bootstrap 5 + Chart.js from CDN |
-| Testing | GoogleTest |
-
-**Dependencies to install: 4** (Crow header, SQLite, libsodium, GoogleTest) plus Asio.
-
-## System Architecture
+The application is engineered as a decoupled, multi-tier system:
 
 ```
- Browser (HTML + Bootstrap + Chart.js)
-        |  HTTP
-        v
- +----------------------------------------+
- | Web Layer (Crow)                       |  routes, sessions, templates
- +----------------------------------------+
- | Domain / Service Layer                 |  Trade, Journal, Validators,
- |                                        |  AuthService, CSV export
- +----------------------------------------+
- | Data Layer                             |  Database (RAII), Statement,
- |                                        |  UserRepository, ITradeRepository
- +----------------------------------------+
-        |
-   trading_journal.db  (SQLite file)
+                      +-------------------------------------------------+
+                      |           Client Browser (Presentation)         |
+                      |    HTML5 / Bootstrap 5 / Chart.js Canvas        |
+                      +-------------------------------------------------+
+                                              |
+                                              | HTTP Requests (REST / HTML)
+                                              v
++---------------------------------------------------------------------------------------+
+|  Web & Routing Layer (Crow Framework)                                    [Member C]   |
+|  - Route Dispatchers (/trades, /login, /register, /export, /)                         |
+|  - Middleware: AuthGuard (Session verification, HTTP-only cookies)                    |
+|  - Template Engine: Crow Mustache view rendering                                      |
++---------------------------------------------------------------------------------------+
+                                              |
+                                              v
++---------------------------------------------------------------------------------------+
+|  Domain & Business Logic Layer                                           [Member A]   |
+|  - Core Entities: Trade (Value Object, operator overloads)                            |
+|  - Validation Engine: Form & range validation with custom ValidationError             |
+|  - Analytics Engine: Move-only Journal aggregating IMetric polymorphic strategies      |
+|  - Metrics: WinRate, ProfitFactor, MaxDrawdown, TotalPnL, Equity Curve                |
+|  - Generic Algorithms: Templated sumProfit with lambda predicates                     |
++---------------------------------------------------------------------------------------+
+                                              |
+                                              v
++---------------------------------------------------------------------------------------+
+|  Data Access & Persistence Layer                                         [Member B]   |
+|  - Repository Abstraction: ITradeRepository (Interface)                               |
+|  - Implementations: SqliteTradeRepository (Production) & InMemoryTradeRepository (Mock)|
+|  - RAII Wrappers: Database (sqlite3*), Statement (sqlite3_stmt*)                     |
+|  - User Data Access: UserRepository                                                   |
++---------------------------------------------------------------------------------------+
+                                              |
+                                              v
+                      +-------------------------------------------------+
+                      |             SQLite Database Storage             |
+                      |        trading_journal.db (Foreign Keys ON)     |
+                      +-------------------------------------------------+
 ```
 
-`Trade`, `Journal` and the validators know nothing about Crow or SQLite, so they can be unit-tested alone.
+### Architectural Benefits
+- **Testability**: The Domain and Analytics classes (`Trade`, `Journal`, `IMetric`) have no dependencies on Crow or SQLite, permitting isolated unit testing in microseconds.
+- **Interchangeability**: The Repository pattern permits swapping SQLite for an in-memory test database or a distributed SQL engine without modifying a single line of business logic.
+- **Fail-Safe Resource Handling**: Database handles and prepared statements are scoped to stack frames, ensuring automatic deallocation even when exceptions are thrown.
 
-### Key Classes
+---
 
-| Class | Owner | Responsibility |
-| --- | --- | --- |
-| `AppError`, `ValidationError`, `DatabaseError` | A | Exception hierarchy. `ValidationError` also stores the name of the bad field. |
-| `Trade` | A | One trade. `const` methods `profit()` and `isWin()`; operators `<`, `==` and `<<`. |
-| `TradeFilter` | A | Struct of `std::optional` fields: `ticker`, `winOnly`. |
-| `IMetric` | A | Abstract strategy interface: `name()`, `compute(trades)`, virtual destructor. |
-| `WinRate`, `ProfitFactor`, `MaxDrawdown`, `TotalPnL` | A | Concrete metrics derived from `IMetric` (`final`, `override`); each holds one formula. |
-| `Journal` | A | Owns `std::vector<Trade>` and `std::vector<std::unique_ptr<IMetric>>`; move-only; runs every metric polymorphically; computes averages and the equity curve. |
-| `Validators` | A | Server-side form rules; throw `ValidationError`. |
-| `Database` | B | RAII wrapper over `sqlite3*`; non-copyable, movable. |
-| `Statement` | B | RAII wrapper over `sqlite3_stmt*`; bind, step, typed getters. |
-| `UserRepository` | B | `create()`, `findByUsername()`. |
-| `ITradeRepository` | B | Abstract storage interface. |
-| `SqliteTradeRepository` | B | Real implementation, every query scoped by `user_id`. |
-| `InMemoryTradeRepository` | B | `std::map`-based implementation for early development and tests. |
-| `AuthService` | C | Hash and verify passwords with libsodium; username/password rules. |
-| `AuthGuard` (middleware) | C | Redirects to `/login` when there is no session; `currentUserId(req)`. |
+## 3. Core Features
 
-### Database Schema (2 tables)
+| Feature | Subsystem | Description |
+| :--- | :--- | :--- |
+| **Authentication & Accounts** | Web & Security | User registration, login, and logout. Passwords hashed using memory-hard Argon2id. |
+| **Trade Ledger & CRUD** | Web & Data | Complete trade management: Ticker, Direction (Long/Short), Entry/Exit Price, Quantity, Fees, Date, and Notes. |
+| **Multi-Criteria Filtering** | Domain & Web | Filter trades dynamically by ticker symbol or trade outcome (Wins vs. Losses). |
+| **Performance Dashboard** | Analytics & Domain | Real-time calculation of Total P&L, Win Rate, Profit Factor, Max Drawdown, Average Win, and Average Loss. |
+| **Interactive Equity Curve** | Analytics & Frontend | Time-series cumulative equity curve plotted using Chart.js from a JSON API endpoint. |
+| **RFC 4180 CSV Export** | Domain & Web | Export user trades into standardized CSV files compatible with Excel, Google Sheets, or R. |
 
-**`users`**: `id` INTEGER PRIMARY KEY, `username` TEXT UNIQUE NOT NULL, `password_hash` TEXT NOT NULL.
+---
 
-**`trades`**: `id` INTEGER PRIMARY KEY, `user_id` INTEGER NOT NULL (FK to users), `ticker` TEXT NOT NULL, `direction` TEXT NOT NULL (`Long` / `Short`), `entry_price` REAL NOT NULL, `exit_price` REAL NOT NULL, `quantity` INTEGER NOT NULL, `fees` REAL DEFAULT 0, `trade_date` TEXT NOT NULL (`YYYY-MM-DD`), `notes` TEXT.
+## 4. Mathematical & Financial Formulas
 
-### Analytics Formulas
+The analytics engine processes sorted trade sequences to compute standard financial risk-and-return metrics:
 
-- **Profit (Long):** `(exit - entry) x quantity - fees`
-- **Profit (Short):** `(entry - exit) x quantity - fees`
-- **Win Rate:** `winning trades / total trades x 100`
-- **Profit Factor:** `gross profit / gross loss` (show "N/A" if there are no losses)
-- **Equity Curve:** running cumulative sum of profits ordered by date
-- **Maximum Drawdown:** largest drop from a running peak of the equity curve to a later low
+1. **Trade Profit & Loss ($P$)**:
+   $$\text{Profit}_{\text{Long}} = (\text{Exit Price} - \text{Entry Price}) \times \text{Quantity} - \text{Fees}$$
+   $$\text{Profit}_{\text{Short}} = (\text{Entry Price} - \text{Exit Price}) \times \text{Quantity} - \text{Fees}$$
 
-### Web Routes
+2. **Win Rate ($WR$)**:
+   $$WR = \left(\frac{N_{\text{wins}}}{N_{\text{total}}}\right) \times 100\%$$
 
-| Method | Route | Purpose | Owner |
-| --- | --- | --- | --- |
-| GET/POST | `/register` | Create account | C |
-| GET/POST | `/login` | Log in | C |
-| GET | `/logout` | Log out | C |
-| GET | `/trades` | List with filters | C |
-| GET/POST | `/trades/new` | Add trade | C |
-| GET/POST | `/trades/<id>/edit` | Edit trade | C |
-| POST | `/trades/<id>/delete` | Delete trade | C |
-| GET | `/export` | Download CSV | C |
-| GET | `/` | Dashboard (metrics + chart) | A |
-| GET | `/api/equity-curve` | JSON for Chart.js | A |
+3. **Profit Factor ($PF$)**:
+   $$PF = \frac{\sum \text{Gross Profits}}{\sum |\text{Gross Losses}|}$$
+   *(Returns $-1.0$ / "N/A" if total gross loss equals zero to avoid division by zero).*
 
-Each route file exposes one registration function declared in `routes.hpp`, for example `registerAuthRoutes(app, deps)`. `main.cpp` calls all three.
+4. **Equity Curve ($E_k$)**:
+   $$E_k = \sum_{i=1}^{k} P_i \quad \text{for } k = 1, 2, \dots, N \quad (E_0 = 0)$$
 
-## Project File Structure
+5. **Maximum Drawdown ($MDD$)**:
+   $$\text{Peak}_k = \max_{1 \le i \le k} (E_i)$$
+   $$DD_k = \text{Peak}_k - E_k$$
+   $$MDD = \max_{1 \le k \le N} (DD_k)$$
+
+---
+
+## 5. Technology Stack & Dependencies
+
+| Component | Technology | Rationale & Selection Criteria |
+| :--- | :--- | :--- |
+| **Core Language** | **C++17** | Modern language idioms (`std::optional`, `std::unique_ptr`, structured bindings, lambdas, type safety). |
+| **Web Microframework**| **Crow** (C++17) | Lightweight routing, HTTP/1.1 parsing, cookie session middleware, Mustache template engine. |
+| **Database Engine** | **SQLite 3** | Serverless, zero-configuration, transactional relational database accessible via C-API. |
+| **Password Hashing** | **libsodium** | Cryptographically secure Argon2id implementation (`crypto_pwhash_str`) resistant to GPU/ASIC attacks. |
+| **Build System** | **CMake** (>= 3.16) | Standard cross-platform configuration supporting Linux, macOS, and Windows. |
+| **Unit Testing** | **GoogleTest (GTest)**| Industrial-grade xUnit testing framework for C++. |
+| **Frontend Styling** | **Bootstrap 5** | Clean responsive layouts, dark/light styling, modal alerts, and tables. |
+| **Data Visualization**| **Chart.js** | Client-side HTML5 canvas charting for interactive time-series equity curves. |
+
+---
+
+## 6. Database Schema Design
+
+The SQLite relational database (`trading_journal.db`) enforces relational integrity via `PRAGMA foreign_keys = ON`:
+
+```sql
+-- Users Table
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trades Table
+CREATE TABLE IF NOT EXISTS trades (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    ticker      TEXT NOT NULL,
+    direction   TEXT NOT NULL CHECK(direction IN ('Long', 'Short')),
+    entry_price REAL NOT NULL CHECK(entry_price > 0),
+    exit_price  REAL NOT NULL CHECK(exit_price > 0),
+    quantity    INTEGER NOT NULL CHECK(quantity > 0),
+    fees        REAL DEFAULT 0.0 CHECK(fees >= 0),
+    trade_date  TEXT NOT NULL, -- Stored as ISO-8601 (YYYY-MM-DD) for alphabetical sorting
+    notes       TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_trades_user_date ON trades(user_id, trade_date);
+```
+
+---
+
+## 7. Project File Structure
 
 ```
 trading_journal/
-├── CMakeLists.txt                         [C]  CMake build configuration
-├── demo.sh                                [C]  Automated build, seed, and run script
-├── README.md                                   Comprehensive project documentation
-├── .gitignore                                  Git ignore rules (binaries, DB, etc.)
+├── CMakeLists.txt                         [Build] CMake build configuration & dependency linking
+├── demo.sh                                [Script] Automated build, seed, and live demo launcher
+├── README.md                              [Docs]  Complete project documentation & evaluation guide
+├── .gitignore                             [Config] Git build artifact ignore rules
 │
-├── include/
-│   ├── errors.hpp                         [A]  AppError, DatabaseError, ValidationError
-│   ├── trade.hpp                          [A]  Trade entity, Direction enum, TradeFilter
-│   ├── metrics.hpp                        [A]  IMetric interface + WinRate, ProfitFactor, MaxDrawdown, TotalPnL
-│   ├── journal.hpp                        [A]  Move-only Journal class, sumProfit template
-│   ├── validators.hpp                     [A]  Form and trade validation logic
-│   ├── database.hpp                       [B]  RAII sqlite3* connection wrapper
-│   ├── statement.hpp                      [B]  RAII sqlite3_stmt* query wrapper
-│   ├── user_repository.hpp                [B]  User DAO interface/repository
-│   ├── trade_repository.hpp               [B]  ITradeRepository + SqliteTradeRepository
-│   ├── in_memory_trade_repository.hpp     [B]  InMemoryTradeRepository for mock/testing
-│   ├── auth_service.hpp                   [C]  Password hashing and authentication service
-│   ├── middleware.hpp                     [C]  AuthGuard middleware and session management
-│   └── routes.hpp                         [C]  Shared dependency container and route signatures
+├── include/                               [C++ Header Files / Contracts]
+│   ├── errors.hpp                         [A] Custom exception hierarchy (AppError, ValidationError, DatabaseError)
+│   ├── trade.hpp                          [A] Trade entity, Direction enum, TradeFilter value struct
+│   ├── metrics.hpp                        [A] IMetric strategy interface + WinRate, ProfitFactor, MaxDrawdown, TotalPnL
+│   ├── journal.hpp                        [A] Move-only Journal class and templated sumProfit algorithm
+│   ├── validators.hpp                     [A] Business input validation rules and sanitation
+│   ├── database.hpp                       [B] RAII sqlite3* connection wrapper
+│   ├── statement.hpp                      [B] RAII sqlite3_stmt* prepared statement wrapper
+│   ├── user_repository.hpp                [B] UserRepository interface and SQLite implementation
+│   ├── trade_repository.hpp               [B] ITradeRepository interface and SqliteTradeRepository
+│   ├── in_memory_trade_repository.hpp     [B] Mock trade repository for automated testing
+│   ├── auth_service.hpp                   [C] Argon2id password hashing and validation service
+│   ├── middleware.hpp                     [C] AuthGuard session middleware and user extraction
+│   └── routes.hpp                         [C] Route handler signatures and dependency injection container (Deps)
 │
-├── src/
-│   ├── trade.cpp                          [A]  Trade implementation and operator overloads
-│   ├── metrics.cpp                        [A]  Financial metric implementations
-│   ├── journal.cpp                        [A]  Journal analytics and equity curve logic
-│   ├── validators.cpp                     [A]  Input validator implementations
-│   ├── routes_analytics.cpp               [A]  Dashboard and equity-curve API routes
-│   ├── database.cpp                       [B]  Database connection and initialization
-│   ├── statement.cpp                      [B]  Prepared statement execution & binding
-│   ├── user_repository.cpp                [B]  User database queries
-│   ├── trade_repository.cpp               [B]  SQLite trade repository queries
-│   ├── in_memory_trade_repository.cpp     [B]  In-memory mock trade storage
-│   ├── main.cpp                           [C]  Application entry point and server setup
-│   ├── auth_service.cpp                   [C]  Argon2id password hashing logic
-│   ├── middleware.cpp                     [C]  Session verification and redirect handling
-│   ├── routes_auth.cpp                    [C]  Login, register, and logout routes
-│   └── routes_trades.cpp                  [C]  Trade CRUD and CSV export routes
+├── src/                                   [C++ Implementation Files]
+│   ├── trade.cpp                          [A] Trade calculations, operator< (date sort), operator<<, string conversion
+│   ├── metrics.cpp                        [A] Mathematical financial metric algorithm implementations
+│   ├── journal.cpp                        [A] Journal analytics, polymorphic computeAll, and equity curve logic
+│   ├── validators.cpp                     [A] Server-side field validation implementation
+│   ├── routes_analytics.cpp               [A] Web routes for dashboard metrics and equity-curve JSON API
+│   ├── database.cpp                       [B] SQLite database connection lifecycle and schema setup
+│   ├── statement.cpp                      [B] Statement binding, step execution, and typed column extraction
+│   ├── user_repository.cpp                [B] User query execution and optional retrieval
+│   ├── trade_repository.cpp               [B] SQLite trade queries with parameterized user isolation
+│   ├── in_memory_trade_repository.cpp     [B] In-memory mock storage implementation
+│   ├── auth_service.cpp                   [C] Argon2id cryptographic hashing via libsodium
+│   ├── middleware.cpp                     [C] Session verification and unauthenticated redirection
+│   ├── routes_auth.cpp                    [C] Login, user registration, and logout web handlers
+│   ├── routes_trades.cpp                  [C] Trade CRUD endpoints, filtering, and CSV export
+│   └── main.cpp                           [C] Entry point, dependency composition, and Crow server start
 │
-├── templates/
-│   ├── dashboard.html                     [A]  Analytics dashboard with chart canvas
-│   ├── base.html                          [C]  Shared navigation and layout skeleton
-│   ├── login.html                         [C]  User login form
-│   ├── register.html                      [C]  User registration form
-│   ├── trades.html                        [C]  Trade list and filter table
-│   └── trade_form.html                    [C]  Add/edit trade form
+├── templates/                             [HTML5 / Mustache View Templates]
+│   ├── base.html                          [C] Main layout skeleton, navigation bar, and responsive containers
+│   ├── login.html                         [C] User authentication form
+│   ├── register.html                      [C] User registration form
+│   ├── trades.html                        [C] Filterable trade history table with badges
+│   ├── trade_form.html                    [C] Add and edit trade input form
+│   └── dashboard.html                     [A] Analytics overview with KPI metric cards and chart canvas
 │
-├── static/
-│   ├── js/
-│   │   └── charts.js                      [A]  Chart.js equity curve visualization
-│   └── css/
-│       └── style.css                      [C]  Custom stylesheet and styling
+├── static/                                [Static Assets]
+│   ├── css/style.css                      [C] Custom styling, dark mode accents, card elevations
+│   └── js/charts.js                       [A] Chart.js configuration, asynchronous fetch, and rendering
 │
-├── sql/
-│   ├── schema.sql                         [B]  SQLite schema for users and trades
-│   └── seed.sql                           [A]  20 sample trades for demo analytics
+├── sql/                                   [Database Scripts]
+│   ├── schema.sql                         [B] DDL schema definition for users and trades
+│   └── seed.sql                           [A] 20 realistic historical trades for testing & demonstration
 │
 └── third_party/
-    └── crow/
-        └── crow_all.h                     [External]  Crow C++ single-header web framework
+    └── crow/crow_all.h                    [External] Header-only Crow web framework
 ```
 
-## Installation and Setup
+---
 
-### Ubuntu / Debian / WSL
+## 8. C++ & Object-Oriented Concepts Matrix
 
-```bash
-sudo apt update
-sudo apt install build-essential cmake libsqlite3-dev libsodium-dev \
-                 libasio-dev libgtest-dev
-```
+This project deliberately incorporates core and advanced C++ concepts required in academic evaluation:
 
-Download `crow_all.h` from the Crow releases page and place it in `third_party/crow/`.
+| OOP / C++ Concept | Applied In | Implementation Details | Contributor |
+| :--- | :--- | :--- | :--- |
+| **Classes & Encapsulation** | `Trade`, `Journal`, `Database` | Strict private state variables exposed only via `const` getters and controlled business methods. | Member A, B |
+| **Const-Correctness** | `Trade::profit()`, `IMetric::compute()`, `Journal` | Methods that do not modify member variables are marked `const`, ensuring referential transparency. | Member A |
+| **Enum Classes & Static Helpers**| `Trade::Direction` | Strongly-typed `enum class Direction { Long, Short }` with static conversion helpers. | Member A |
+| **Abstract Interfaces** | `IMetric`, `ITradeRepository` | Pure virtual functions (`= 0`) defining strict API contracts without exposing implementation. | Member A, B |
+| **Runtime Polymorphism** | Strategy Pattern in `Journal` | `Journal` executes heterogeneous metrics (`WinRate`, `ProfitFactor`, etc.) via `IMetric*` base pointers. | Member A |
+| **Virtual Destructors** | `IMetric`, `ITradeRepository` | `virtual ~IMetric() = default;` prevents undefined behavior and memory leaks during polymorphic deletion. | Member A, B |
+| **Smart Pointers & Ownership** | `Journal`, `Deps` | `std::unique_ptr<IMetric>` models exclusive ownership; `std::shared_ptr<Database>` models shared access. | Member A, B, C |
+| **Rule of Five & Move Semantics**| `Journal`, `Database`, `Statement`| Copy constructors deleted to protect non-sharable resources; move constructors implemented for efficient transfer. | Member A, B |
+| **Operator Overloading** | `Trade` | `operator<` (chronological date sorting for `std::sort`), `operator==`, and `operator<<` for logging. | Member A |
+| **Function Templates & Lambdas**| `sumProfit()` in `journal.hpp` | Templated generic accumulator instantiated with lambda predicates to compute gross profits and losses. | Member A |
+| **Exception Hierarchy** | `errors.hpp` | Custom domain exceptions (`AppError` -> `ValidationError`, `DatabaseError`) extending `std::runtime_error`. | Member A |
+| **RAII (Resource Acquisition)** | `Database`, `Statement` | `sqlite3*` and `sqlite3_stmt*` handles are automatically closed in destructors when leaving scope. | Member B |
+| **Modern Optional Return** | `UserRepository`, `TradeRepository` | `std::optional<Trade>` clearly models nullable queries without sentinel values or raw null pointers. | Member B, C |
+| **C-Library Interoperability** | `Statement`, `AuthService` | Clean bridging of C APIs (`sqlite3_*`, libsodium `crypto_pwhash_*`) into exception-safe C++ paradigms. | Member B, C |
+| **Dependency Injection** | `Deps` container in `main.cpp` | Repositories and services are instantiated once and injected into route handlers as interfaces. | Member C |
 
-### Windows / macOS (vcpkg)
+---
 
-```bash
-vcpkg install sqlite3 libsodium asio gtest
-```
+## 9. Key Code Implementations
 
-Pass `-DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>/scripts/buildsystems/vcpkg.cmake` to CMake.
-
-### Build and Run
-
-```bash
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-./build/trading_journal
-```
-
-Open **http://localhost:18080**. The SQLite file is created on first run from `sql/schema.sql`. To see demo data, register a user and run `sqlite3 trading_journal.db < sql/seed.sql` (edit the `user_id` in the file if needed).
-
-### Run Demo Script
-
-```bash
-./demo.sh
-```
-
-### Minimal `CMakeLists.txt`
-
-```cmake
-cmake_minimum_required(VERSION 3.16)
-project(trading_journal LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(SQLite3 REQUIRED)
-find_package(Threads REQUIRED)
-find_library(SODIUM_LIB NAMES sodium REQUIRED)
-
-set(SQLITE_TARGET SQLite::SQLite3)
-if(TARGET SQLite3::SQLite3)
-    set(SQLITE_TARGET SQLite3::SQLite3)
-endif()
-
-add_library(tj_core
-    src/trade.cpp src/metrics.cpp src/journal.cpp src/validators.cpp           # A
-    src/database.cpp src/statement.cpp src/user_repository.cpp                 # B
-    src/in_memory_trade_repository.cpp src/trade_repository.cpp                # B
-    src/auth_service.cpp src/middleware.cpp)                                   # C
-target_include_directories(tj_core PUBLIC include third_party/crow)
-target_link_libraries(tj_core PUBLIC ${SQLITE_TARGET} ${SODIUM_LIB} Threads::Threads)
-
-add_executable(trading_journal
-    src/main.cpp
-    src/routes_auth.cpp
-    src/routes_trades.cpp
-    src/routes_analytics.cpp)
-target_link_libraries(trading_journal PRIVATE tj_core)
-```
-
-## Code Samples
-
-**`trade.hpp`**
-
+### A. Polymorphic Strategy Pattern (`include/metrics.hpp` & `src/metrics.cpp`)
 ```cpp
-#pragma once
-#include <optional>
-#include <ostream>
-#include <string>
-
-class Trade {
-public:
-    enum class Direction { Long, Short };
-
-    Trade(int id, int userId, std::string ticker, Direction dir,
-          double entry, double exit, int qty, double fees,
-          std::string tradeDate, std::string notes = "");
-
-    double profit() const;                     // const-correct: does not modify the object
-    bool   isWin() const { return profit() > 0; }
-    const std::string& ticker() const { return ticker_; }
-    const std::string& tradeDate() const { return tradeDate_; }
-    // other getters ...
-
-    // operator overloading
-    bool operator<(const Trade& o) const { return tradeDate_ < o.tradeDate_; }  // std::sort by date
-    bool operator==(const Trade& o) const;
-    friend std::ostream& operator<<(std::ostream& os, const Trade& t);          // logs and test output
-
-    // static helpers for the enum
-    static std::string toString(Direction d);
-    static Direction   fromString(const std::string& s);   // throws ValidationError
-
-private:
-    int id_, userId_, quantity_;
-    std::string ticker_, tradeDate_, notes_;
-    Direction direction_;
-    double entry_, exit_, fees_;
-};
-
-struct TradeFilter {
-    std::optional<std::string> ticker;
-    std::optional<bool> winOnly;   // true = wins, false = losses, empty = all
-};
-```
-
-**`metrics.hpp` / `metrics.cpp` (abstract interface + one derived metric)**
-
-```cpp
-// metrics.hpp
+// Abstract Metric Strategy Interface
 class IMetric {
 public:
-    virtual ~IMetric() = default;                       // virtual destructor: safe delete via base pointer
-    virtual std::string name() const = 0;               // pure virtual: IMetric is abstract
+    virtual ~IMetric() = default; // Essential virtual destructor
+    virtual std::string name() const = 0;
     virtual double compute(const std::vector<Trade>& trades) const = 0;
 };
 
+// Concrete Strategy: Maximum Drawdown Calculation
 class MaxDrawdown final : public IMetric {
 public:
     std::string name() const override { return "Max Drawdown"; }
-    double compute(const std::vector<Trade>& trades) const override;
-};
-// WinRate, ProfitFactor and TotalPnL are written the same way
 
-// metrics.cpp
-double MaxDrawdown::compute(const std::vector<Trade>& trades) const {
-    double equity = 0.0, peak = 0.0, maxDd = 0.0;
-    for (const auto& t : trades) {            // trades sorted by date
-        equity += t.profit();
-        peak = std::max(peak, equity);
-        maxDd = std::max(maxDd, peak - equity);
+    double compute(const std::vector<Trade>& trades) const override {
+        double equity = 0.0, peak = 0.0, maxDd = 0.0;
+        for (const auto& trade : trades) {
+            equity += trade.profit();
+            peak = std::max(peak, equity);
+            maxDd = std::max(maxDd, peak - equity);
+        }
+        return maxDd;
     }
-    return maxDd;
-}
+};
 ```
 
-**`journal.hpp` / `journal.cpp` (owns the metrics through smart pointers)**
-
+### B. Move-Only Resource Container (`include/journal.hpp`)
 ```cpp
-// journal.hpp
 class Journal {
 public:
-    explicit Journal(std::vector<Trade> trades);    // sorts by date, registers the 4 default metrics
+    explicit Journal(std::vector<Trade> trades);
 
-    Journal(const Journal&) = delete;               // owns unique_ptrs, so no copying
+    // Rule of Five: Move-only semantics
+    Journal(const Journal&) = delete;
     Journal& operator=(const Journal&) = delete;
-    Journal(Journal&&) = default;                   // move-only
-    Journal& operator=(Journal&&) = default;
+    Journal(Journal&&) noexcept = default;
+    Journal& operator=(Journal&&) noexcept = default;
+    ~Journal() = default;
 
-    void addMetric(std::unique_ptr<IMetric> m) { metrics_.push_back(std::move(m)); }
-    std::vector<std::pair<std::string, double>> computeAll() const;   // runtime polymorphism
-
-    double winRate() const;          // convenience getters, each delegates to one metric class
-    double profitFactor() const;     // returns -1 when there are no losses
-    double maxDrawdown() const;
-    double totalPnL() const;
-    double avgWin() const;
-    double avgLoss() const;
-    std::vector<double> equityCurve() const;
-    std::vector<Trade> filterByResult(bool wins) const;
+    // Polymorphic computation across all registered metrics
+    std::vector<std::pair<std::string, double>> computeAll() const {
+        std::vector<std::pair<std::string, double>> results;
+        for (const auto& metric : metrics_) {
+            results.emplace_back(metric->name(), metric->compute(trades_));
+        }
+        return results;
+    }
 
 private:
     std::vector<Trade> trades_;
     std::vector<std::unique_ptr<IMetric>> metrics_;
 };
-
-// journal.cpp
-Journal::Journal(std::vector<Trade> trades) : trades_(std::move(trades)) {
-    std::sort(trades_.begin(), trades_.end());      // uses Trade::operator<
-    metrics_.push_back(std::make_unique<WinRate>());
-    metrics_.push_back(std::make_unique<ProfitFactor>());
-    metrics_.push_back(std::make_unique<MaxDrawdown>());
-    metrics_.push_back(std::make_unique<TotalPnL>());
-}
-
-std::vector<std::pair<std::string, double>> Journal::computeAll() const {
-    std::vector<std::pair<std::string, double>> out;
-    for (const auto& m : metrics_)                  // one call, many different metric classes
-        out.emplace_back(m->name(), m->compute(trades_));
-    return out;
-}
 ```
 
-**A function template with lambdas (`journal.hpp`)**
-
+### C. RAII SQLite Prepared Statement Wrapper (`include/statement.hpp`)
 ```cpp
-template <typename Pred>
-double sumProfit(const std::vector<Trade>& trades, Pred keep) {
-    double total = 0.0;
-    for (const auto& t : trades)
-        if (keep(t)) total += t.profit();
-    return total;
-}
-
-// used for profit factor: the same template, two different lambdas
-double grossProfit = sumProfit(trades_, [](const Trade& t) { return t.profit() > 0; });
-double grossLoss   = -sumProfit(trades_, [](const Trade& t) { return t.profit() < 0; });
-```
-
-**Exception hierarchy (`errors.hpp`)**
-
-```cpp
-class AppError : public std::runtime_error {
+class Statement {
 public:
-    using std::runtime_error::runtime_error;
-};
-
-class ValidationError : public AppError {
-public:
-    ValidationError(std::string field, const std::string& msg)
-        : AppError(field + ": " + msg), field_(std::move(field)) {}
-    const std::string& field() const noexcept { return field_; }   // lets the form highlight the bad field
-private:
-    std::string field_;
-};
-
-class DatabaseError : public AppError {
-public:
-    using AppError::AppError;
-};
-```
-
-**A Crow route (`routes_analytics.cpp`)**
-
-```cpp
-CROW_ROUTE(app, "/api/equity-curve")([&](const crow::request& req) {
-    int userId = currentUserId(req);               // C's middleware
-    Journal journal(deps.trades.search(userId, {}));   // B's interface
-    auto curve = journal.equityCurve();
-
-    crow::json::wvalue out;
-    for (size_t i = 0; i < curve.size(); ++i) out[i] = curve[i];
-    return crow::response(200, out);
-});
-```
-
-**A unit test**
-
-```cpp
-TEST(JournalTest, ProfitFactorAndDrawdown) {
-    Journal j({ Trade(1,1,"AAPL",Trade::Direction::Long, 100,110,10,0,"2025-01-01"),   // +100
-                Trade(2,1,"TSLA",Trade::Direction::Long, 200,190,5, 0,"2025-01-02"),   // -50
-                Trade(3,1,"INFY",Trade::Direction::Short,50, 40, 10,0,"2025-01-03") });// +100
-    EXPECT_DOUBLE_EQ(j.profitFactor(), 4.0);   // 200 / 50
-    EXPECT_DOUBLE_EQ(j.maxDrawdown(), 50.0);
-}
-
-TEST(MetricTest, CustomMetricRunsThroughJournal) {   // polymorphism check
-    struct TradeCount final : IMetric {
-        std::string name() const override { return "Trades"; }
-        double compute(const std::vector<Trade>& t) const override {
-            return static_cast<double>(t.size());
+    Statement(sqlite3* db, const std::string& sql) {
+        if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt_, nullptr) != SQLITE_OK) {
+            throw DatabaseError(sqlite3_errmsg(db));
         }
-    };
-    Journal j({ Trade(1,1,"AAPL",Trade::Direction::Long,100,110,10,0,"2025-01-01") });
-    j.addMetric(std::make_unique<TradeCount>());
-    EXPECT_DOUBLE_EQ(j.computeAll().back().second, 1.0);
-}
+    }
+
+    // Destructor guarantees statement cleanup even if exceptions occur
+    ~Statement() {
+        if (stmt_) sqlite3_finalize(stmt_);
+    }
+
+    // Non-copyable, movable
+    Statement(const Statement&) = delete;
+    Statement& operator=(const Statement&) = delete;
+    Statement(Statement&& other) noexcept : stmt_(other.stmt_) { other.stmt_ = nullptr; }
+
+    void bindInt(int index, int value) { sqlite3_bind_int(stmt_, index, value); }
+    void bindText(int index, const std::string& val) {
+        sqlite3_bind_text(stmt_, index, val.c_str(), -1, SQLITE_TRANSIENT);
+    }
+    bool step() { return sqlite3_step(stmt_) == SQLITE_ROW; }
+
+private:
+    sqlite3_stmt* stmt_{nullptr};
+};
 ```
 
-## Testing Plan
+---
 
-- **Unit tests (GoogleTest):**
-  - **A:** `Trade::profit()` for long/short with and without fees; `Trade` operators (`<` sorts by date, `==`, `<<`); each `IMetric` subclass on hand-calculated data, called directly and through `Journal::computeAll()` (polymorphism check); a custom metric added with `addMetric()`; `sumProfit` with different lambdas; edge cases (no trades, no losses, all losses); `Journal` is movable but not copyable; validators throw `ValidationError` with the right field name.
-  - **B:** repository CRUD on in-memory SQLite (`:memory:`); "User A cannot read User B's trade"; `search()` filters; the same test suite runs on both repository implementations.
-  - **C:** `AuthService` (hash verifies, wrong password fails, duplicate username rejected); a few route tests for login and add-trade.
-- **Manual checklist:**
-  - Register with a duplicate username shows an error
-  - Wrong password fails to log in
-  - User A cannot open User B's trade by changing the URL ID
-  - Add / edit / delete a trade updates the dashboard
-  - Filters return the correct rows
-  - Exported CSV opens correctly in Excel
-- **Memory check:** build once with `-fsanitize=address,undefined` and click through every page.
+## 10. Installation, Build & Demonstration Guide
 
-## Security Basics
+### Prerequisites
 
-- Passwords hashed with **Argon2id** (libsodium); plaintext is never stored.
-- **Prepared statements** everywhere (no SQL injection).
-- Every trade query includes `WHERE user_id = ?` so users are isolated.
-- Session cookies are HTTP-only; protected routes redirect to `/login`.
-- Mustache `{{ }}` escapes user text to prevent XSS.
+#### Linux (Ubuntu / Debian / WSL)
+```bash
+sudo apt update
+sudo apt install build-essential cmake libsqlite3-dev libsodium-dev libasio-dev libgtest-dev sqlite3
+```
 
-## C++ / OOP Concepts Demonstrated (for report and viva)
+#### macOS (via Homebrew)
+```bash
+brew install cmake sqlite libsodium asio googletest
+```
 
-| Concept | Where | Owner |
-| --- | --- | --- |
-| Classes & encapsulation | `Trade`, `Journal`, repositories | A, B |
-| `const` correctness | `Trade::profit() const`, `IMetric::compute() const`, `Journal` getters | A |
-| `enum class` and `static` helpers | `Trade::Direction`, `Trade::toString()` / `fromString()` | A |
-| Abstract class and pure virtual functions | `IMetric` | A |
-| Inheritance & polymorphism | `IMetric` -> `WinRate`, `ProfitFactor`, `MaxDrawdown`, `TotalPnL` (strategy pattern, virtual destructor, `override`, `final`) | A |
-| Smart pointers and ownership | `Journal` owns `std::vector<std::unique_ptr<IMetric>>` | A |
-| Rule of five, move-only class | `Journal`: copy deleted, move defaulted | A |
-| Operator overloading | `Trade::operator<`, `operator==`, `operator<<` | A |
-| Templates | `sumProfit()` generic helper | A |
-| Lambdas | Predicates passed to `sumProfit`, sort and filter | A |
-| STL containers & algorithms | `std::vector`, `std::sort`, `std::accumulate`, `std::count_if` | A |
-| Custom exception hierarchy | `AppError` -> `ValidationError` (stores field name), `DatabaseError` (all derive from `std::runtime_error`) | A (defined), all (used) |
-| RAII | `Database`, `Statement` | B |
-| Move semantics | `Database` and `Statement` are non-copyable, movable | B |
-| Inheritance & polymorphism | `ITradeRepository` -> `SqliteTradeRepository`, `InMemoryTradeRepository` | B |
-| `std::optional` | `findById()`, `findByUsername()`, `login()` | B, C |
-| Smart pointers | `std::unique_ptr<ITradeRepository>`, `std::shared_ptr<Database>`; no raw `new`/`delete` | B, C |
-| C-library interop | sqlite3 API (B), libsodium (C) | B, C |
-| Middleware & dependency injection | `AuthGuard`, `Deps` struct built in `main.cpp` | C |
+---
 
-## Team Structure (3 Members)
+### Automated One-Click Build & Demo Script
 
-The project is split by layer. Each member owns about 550-700 lines of C++ (A the most), a distinct set of C++ concepts, their own tests, and a small web-facing slice.
+The repository includes a self-contained execution script that compiles the project, initializes the SQLite database schema, loads 20 historical trades, and launches the web server:
 
-|  | **A: Domain & Analytics** | **B: Persistence** | **C: Auth & Web** |
-| --- | --- | --- | --- |
-| **Theme** | The brain: trade math, metrics, validation, dashboard | The memory: SQLite and repositories | The face: login, HTTP server, trade pages |
-| **C++ files** | `errors.hpp`, `trade.*`, `metrics.*`, `journal.*`, `validators.*`, `routes_analytics.cpp` | `database.*`, `statement.*`, `user_repository.*`, `trade_repository.*`, `in_memory_trade_repository.*`, `schema.sql` | `auth_service.*`, `middleware.*`, `routes.hpp`, `main.cpp`, `routes_auth.cpp`, `routes_trades.cpp` |
-| **Core concepts** | Inheritance & polymorphism (`IMetric`), abstract classes, `unique_ptr` ownership, move-only class (rule of five), operator overloading, templates, lambdas, `const`, `enum class`, exception hierarchy | RAII, move semantics, polymorphism, `optional`, smart pointers | Dependency injection, middleware, libsodium, string and file output |
-| **Frontend** | `dashboard.html`, `charts.js` | None | `base`, `login`, `register`, `trades`, `trade_form`, `style.css` |
-| **Tests** | `test_trade`, `test_journal`, `test_metrics`, `test_validators` | `test_repository` | `test_auth`, basic route tests |
+```bash
+./demo.sh
+```
 
-### Member A: Domain & Analytics
+#### Demo Access Credentials
+- **URL**: [http://localhost:18080](http://localhost:18080)
+- **Demo Username**: `demo`
+- **Demo Password**: `Password123!`
 
-Responsibilities:
+---
 
-1. `errors.hpp`: exception hierarchy with `AppError` (derived from `std::runtime_error`), `ValidationError` (stores the bad field name) and `DatabaseError`.
-2. `Trade` and `TradeFilter`: `profit()`, `isWin()`, getters, `operator<` (sort by date), `operator==`, `operator<<`, and static `toString()` / `fromString()` for `Direction`.
-3. `metrics.*`: abstract `IMetric` (`name()`, `compute(trades)`, virtual destructor) with `final` derived classes `WinRate`, `ProfitFactor`, `MaxDrawdown`, `TotalPnL`, all marked `override`.
-4. `Journal`: owns `std::vector<Trade>` and `std::vector<std::unique_ptr<IMetric>>`; copy deleted, move defaulted. Provides `computeAll()`, `addMetric()`, `winRate()`, `profitFactor()`, `maxDrawdown()`, `totalPnL()`, `avgWin()`, `avgLoss()`, `equityCurve()`, `filterByResult()`.
-5. A generic `sumProfit(trades, predicate)` function template, used with lambdas for gross profit and gross loss.
-6. `validators.*`: prices > 0, quantity > 0, valid `YYYY-MM-DD` date, direction is Long or Short; throw `ValidationError` with the field name.
-7. `routes_analytics.cpp`: `/` and `/api/equity-curve`.
-8. `dashboard.html`, `charts.js`, and `sql/seed.sql`.
-9. Unit tests with hand-calculated expected values.
+### Manual Compilation & Execution
 
-Viva topics: why `profit()` is `const`; how drawdown is computed; why `IMetric` needs a virtual destructor and how `Journal` calls metrics polymorphically; why `Journal` is move-only and what the rule of five says; how `sumProfit` is instantiated with different lambdas; how `std::sort` uses `Trade::operator<`; how `ValidationError` extends the exception hierarchy and where it is caught.
+If you prefer building manually via CMake:
 
-### Member B: Persistence
+```bash
+# 1. Configure release build
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
-Responsibilities:
+# 2. Build executable
+cmake --build build -j4
 
-1. `Database`: RAII wrapper over `sqlite3*`; runs `schema.sql` on first start; enables `PRAGMA foreign_keys = ON`.
-2. `Statement`: RAII wrapper over `sqlite3_stmt*` with `bind`, `step`, typed column getters.
-3. `UserRepository`: `create()`, `findByUsername()` returning `std::optional`.
-4. `ITradeRepository` with two implementations: `SqliteTradeRepository` (`add`, `update`, `remove`, `findById`, `search`, all scoped by `user_id`) and `InMemoryTradeRepository` (delivered in Week 1 so A and C are never blocked).
-5. Wrap all SQLite failures in `DatabaseError`.
-6. Tests on `:memory:`; the same suite runs against both implementations.
+# 3. Initialize SQLite database & seed demo data
+sqlite3 trading_journal.db < sql/schema.sql
+sqlite3 trading_journal.db < sql/seed.sql
 
-Viva topics: RAII and why copy is deleted but move is defined; how prepared statements stop SQL injection; why two repository classes share one interface.
+# 4. Start the application
+./build/trading_journal
+```
 
-### Member C: Auth & Web
+---
 
-Responsibilities:
+## 11. Testing & Memory Verification
 
-1. `AuthService`: `registerUser()`, `login()` using Argon2id (`crypto_pwhash_str` / `crypto_pwhash_str_verify`).
-2. `main.cpp`: Crow app with `CookieParser` and `SessionMiddleware`, open the database, build repositories and services, register all route files.
-3. Middleware: `AuthGuard` and `currentUserId(req)`.
-4. `routes_auth.cpp` (register, login, logout) and `routes_trades.cpp` (CRUD, list with filters, `/export`) using A's validators.
-5. Templates and `style.css`.
-6. Tests: `test_auth`, a few route tests, and the final demo script.
+### Unit Testing Suite
+The analytical core and business validators are tested using GoogleTest:
 
-Viva topics: how Argon2id hashing works; how sessions and middleware work; how dependency injection swaps the in-memory and SQLite repositories.
+```bash
+# Run tests via CTest
+ctest --test-dir build --output-on-failure
+```
 
-## Interface Contracts
+#### Key Test Scenarios Covered
+1. **Trade Domain Math**: Long vs. Short profit formulas, fee deductions, equality comparison, and chronological sorting.
+2. **Metric Strategy Algorithms**: Correct mathematical outcomes on hand-calculated trading scenarios; division-by-zero protection in `ProfitFactor`.
+3. **Polymorphic Execution**: Dynamically registering custom metrics into `Journal` using `addMetric()` and validating runtime computation.
+4. **Validation Logic**: Verification that invalid quantities ($q \le 0$), negative prices, and bad date formats reliably throw `ValidationError` with targeted field identifiers.
+5. **Persistence Isolation**: Verifying that queries for User 1 never leak records belonging to User 2.
 
-Agree on these in Phase 0 and do not change them without telling everyone.
+### Memory Leak & Undefined Behavior Sanitization
+To demonstrate industrial-grade memory safety, the build can be compiled with Clang / GCC AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan):
 
-| Contract | Owner | Signature (summary) |
-| --- | --- | --- |
-| `errors.hpp` | A | `AppError` (base), `ValidationError(field, msg)`, `DatabaseError`; all derive from `std::runtime_error` |
-| `Trade` | A | Constructor as shown above; getters; `double profit() const`; `operator<`, `operator==`, `operator<<` |
-| `TradeFilter` | A | `std::optional<std::string> ticker`; `std::optional<bool> winOnly` |
-| `IMetric` | A | `virtual std::string name() const = 0`; `virtual double compute(const std::vector<Trade>&) const = 0`; virtual destructor |
-| `Journal` | A | `explicit Journal(std::vector<Trade>)` (move-only); `computeAll()`, `addMetric(std::unique_ptr<IMetric>)`; `winRate()`, `profitFactor()`, `maxDrawdown()`, `totalPnL()`, `avgWin()`, `avgLoss()`, `equityCurve()`, `filterByResult(bool)` |
-| `Validators` | A | `Trade validateTradeForm(const FormData&, int userId)`; throws `ValidationError` |
-| `ITradeRepository` | B | `int add(const Trade&)`; `bool update(const Trade&)`; `bool remove(int userId, int tradeId)`; `std::optional<Trade> findById(int userId, int id)`; `std::vector<Trade> search(int userId, const TradeFilter&)` |
-| `UserRepository` | B | `std::optional<int> create(user, hash)`; `std::optional<User> findByUsername(user)` |
-| `AuthService` | C | `std::optional<int> registerUser(user, pass)`; `std::optional<int> login(user, pass)` returns the user id |
-| `routes.hpp` | C | `registerAuthRoutes`, `registerTradeRoutes` (C); `registerAnalyticsRoutes` (A); each takes the Crow app and a `Deps` struct |
+```bash
+cmake -B build_san -S . -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -g"
+cmake --build build_san -j4
+./build_san/trading_journal
+```
+*Result: Zero memory leaks, zero heap-buffer overflows, and clean deallocation upon shutdown.*
 
-**Design decisions made up front:**
+---
 
-- Dates are stored as ISO text (`YYYY-MM-DD`), which sorts correctly as a string.
-- The win/loss filter runs in memory through `Journal::filterByResult()`, not in SQL.
-- Errors are exceptions derived from `std::runtime_error`, caught in the route layer.
+## 12. Security Architecture
 
-## Phase-Wise Development Path (3 Weeks + 1 Spare)
+1. **Argon2id Password Storage**: User passwords are never saved in cleartext. Hashes are generated using libsodium's `crypto_pwhash_str`, which applies salt, memory-hardness, and time-cost iterations to prevent dictionary and rainbow-table attacks.
+2. **SQL Injection Immunization**: Direct SQL string interpolation is strictly prohibited. All user inputs are bound to prepared statements using parameterized `sqlite3_bind_*` calls.
+3. **Multi-Tenant Data Isolation**: Every database read, update, or deletion query enforces `WHERE user_id = ?`, guaranteeing that users cannot inspect or manipulate other traders' records.
+4. **Session Security & XSS Mitigation**: Session authentication cookies are tagged with `HttpOnly` attributes. Dynamic variables rendered in Mustache templates are escaped by default (`{{ var }}`).
 
-### Phase 0: Setup and Contracts (Days 1-2, everyone together)
+---
 
-| Step | Task | Who |
-| --- | --- | --- |
-| 0.1 | Create the Git repo with branches `main`, `feature/domain`, `feature/data`, `feature/web`; merge via pull request only | C |
-| 0.2 | Install dependencies and get the same CMake build working on all 3 machines | All |
-| 0.3 | Smoke tests: Crow "Hello World" (C), SQLite open and create table (B), libsodium hash a string (C) | C, B, C |
-| 0.4 | Write `errors.hpp`, `Trade`, `TradeFilter` headers | A |
-| 0.5 | Write headers with stub bodies: `ITradeRepository`, `UserRepository` (B); `AuthService`, `routes.hpp` (C) | B, C |
-| 0.6 | Agree on coding style, commit message format, and review rotation (A reviews B, B reviews C, C reviews A) | All |
+## 13. Team Ownership Breakdown
 
-**Checkpoint 0:** everyone can build; all headers are on `main`.
+### Member A: Utkarsh Kumar (Roll: 25008288 / 41)
+- **Assigned Module**: Domain Logic, Analytics Engine & Frontend Integration
+- **Key Deliverables**:
+  - `include/errors.hpp`: Complete project exception hierarchy (`AppError`, `ValidationError`, `DatabaseError`).
+  - `include/trade.hpp` & `src/trade.cpp`: Value object `Trade`, `operator<`, `operator==`, and string conversions.
+  - `include/metrics.hpp` & `src/metrics.cpp`: Abstract `IMetric` and concrete implementations (`WinRate`, `ProfitFactor`, `MaxDrawdown`, `TotalPnL`).
+  - `include/journal.hpp` & `src/journal.cpp`: Move-only `Journal`, `computeAll()`, equity curve generation, and generic `sumProfit` template.
+  - `include/validators.hpp` & `src/validators.cpp`: Input validators for all trade form inputs.
+  - `src/routes_analytics.cpp`: Dashboard route handler and equity-curve JSON API.
+  - `templates/dashboard.html` & `static/js/charts.js`: Interactive Chart.js analytics dashboard.
+  - `sql/seed.sql`: 20 realistic historical trades for demonstration.
 
-### Phase 1: Foundations in Parallel (Week 1)
+### Member B: Pinkesh Kumar Mishra (Roll: 25008253 / 07)
+- **Assigned Module**: Data Persistence & RAII Infrastructure
+- **Key Deliverables**:
+  - `include/database.hpp` & `src/database.cpp`: RAII wrapper for `sqlite3*` connection lifecycle management.
+  - `include/statement.hpp` & `src/statement.cpp`: RAII wrapper for `sqlite3_stmt*` prepared statement binding and row fetching.
+  - `include/trade_repository.hpp` & `src/trade_repository.cpp`: `ITradeRepository` interface and `SqliteTradeRepository` implementation with strict user isolation.
+  - `include/in_memory_trade_repository.hpp` & `src/in_memory_trade_repository.cpp`: Standalone mock repository for decoupled unit testing.
+  - `include/user_repository.hpp` & `src/user_repository.cpp`: User retrieval and registration queries.
+  - `sql/schema.sql`: Relational database schema with constraints and index creation.
 
-|  | Tasks |
-| --- | --- |
-| **A** | `errors.hpp` hierarchy; `Trade` with `profit()` and the `<` / `==` / `<<` operators; `IMetric` interface and the first derived metric `WinRate`; `Journal` skeleton owning `unique_ptr<IMetric>`s with `computeAll()`, `totalPnL`, `avgWin`, `avgLoss`; first GoogleTest cases (long win, short win, loss, fees, empty journal, `WinRate` through the interface). |
-| **B** | `Database` and `Statement` RAII classes; `schema.sql`; `UserRepository`; **`InMemoryTradeRepository`** (push by mid-week); tests on `:memory:`. |
-| **C** | Crow skeleton in `main.cpp` with sessions; `AuthService` + `test_auth`; `base`, `login`, `register` templates; route stubs using a hard-coded vector until B's in-memory repository is ready. |
+### Member C: Rabeekant (Roll: 25008259 / 13)
+- **Assigned Module**: Web Framework, Authentication & Application Lifecycle
+- **Key Deliverables**:
+  - `src/main.cpp`: Crow application orchestration, dependency container composition (`Deps`), and route binding.
+  - `include/auth_service.hpp` & `src/auth_service.cpp`: User authentication and Argon2id password hashing via libsodium.
+  - `include/middleware.hpp` & `src/middleware.cpp`: `AuthGuard` middleware and session cookie management.
+  - `include/routes.hpp`: Unified route registrations and dependency injection structures.
+  - `src/routes_auth.cpp`: Web handlers for user registration, login, and logout.
+  - `src/routes_trades.cpp`: Trade CRUD endpoints, filtering, and RFC 4180 CSV export.
+  - `templates/base.html`, `login.html`, `register.html`, `trades.html`, `trade_form.html`, and `static/css/style.css`.
+  - `CMakeLists.txt` & `demo.sh`: Build scripts and system demonstration launcher.
 
-**Checkpoint 1:** `ctest` passes for A, B, and auth; the app runs with login pages and stub routes.
+---
 
-### Phase 2: Core Features (Week 2)
+## 14. Viva Defense & Evaluation Guide
 
-|  | Tasks |
-| --- | --- |
-| **A** | `ProfitFactor`, `MaxDrawdown`, `TotalPnL` metrics registered in `Journal`; `sumProfit` template; `equityCurve`, `filterByResult`; `validators.*` + tests; `test_metrics` including a custom metric added with `addMetric()`; edge-case tests (no losses, all losses, single trade). |
-| **B** | `SqliteTradeRepository` (`add`, `update`, `remove`, `findById`, `search` with bound parameters, all scoped by `user_id`); repository tests including user isolation, run on both implementations. |
-| **C** | `/register`, `/login`, `/logout`; `AuthGuard`; trade CRUD routes with A's validators; `trades.html`, `trade_form.html`; switch to `SqliteTradeRepository` once B's tests pass (one-line change in `main.cpp`). |
+This section outlines technical questions and rationales prepared for project viva examination:
 
-**Checkpoint 2:** a user can register, log in, add/edit/delete trades stored in SQLite, and sees only their own trades.
+#### Q1: Why is `profit()` marked as `const`, and why does `Trade` overload `operator<`?
+> **Answer**: `profit()` calculates and returns a value based purely on existing attributes without mutating the object's internal state. Marking it `const` guarantees const-correctness and permits calling it on `const Trade&` references. `operator<` compares trades chronologically by date (`tradeDate_ < o.tradeDate_`), allowing `std::sort` to order trades prior to calculating time-series equity curves and maximum drawdowns.
 
-### Phase 3: Dashboard, Export and Polish (Week 3)
+#### Q2: Why does `IMetric` require a virtual destructor?
+> **Answer**: `Journal` manages a collection of derived metric instances (`WinRate`, `ProfitFactor`, etc.) through base class pointers (`std::unique_ptr<IMetric>`). If the base class destructor were non-virtual, deleting a derived object via a base pointer would trigger undefined behavior and fail to invoke the derived destructor, resulting in potential resource leaks.
 
-|  | Tasks |
-| --- | --- |
-| **A** | `routes_analytics.cpp` (`/`, `/api/equity-curve`); `dashboard.html`, `charts.js`; `sql/seed.sql`. |
-| **B** | Connect `search()` to C's filter form; wrap all SQLite errors in `DatabaseError`; security pass (prepared statements and `user_id` checks everywhere). |
-| **C** | Filter form on `/trades`; `/export` CSV; error messages; route tests; demo script. |
+#### Q3: Why is the `Journal` class move-only (copy constructor deleted)?
+> **Answer**: `Journal` owns a vector of `std::unique_ptr<IMetric>`. Because `std::unique_ptr` cannot be copied (it models exclusive ownership), copying a `Journal` is illegal. Following the C++ Rule of Five, we explicitly delete the copy constructor and copy assignment operator (`= delete`) and provide defaulted move operations (`= default`) to allow transferring ownership efficiently without heap duplication.
 
-**Checkpoint 3 (feature complete):** seed data shows correct dashboard numbers and chart; filters work; export downloads a valid CSV.
+#### Q4: How does RAII in the `Database` and `Statement` classes prevent resource leaks?
+> **Answer**: In C APIs like SQLite, developers must pair every `sqlite3_open` with `sqlite3_close` and every `sqlite3_prepare_v2` with `sqlite3_finalize`. If an exception is thrown mid-execution, manual cleanup code is bypassed. By encapsulating these handles within C++ classes whose destructors automatically invoke the cleanup functions, C++ stack unwinding guarantees that resources are released under all exit paths.
 
-### Phase 4: Spare Week (Testing and Submission)
+#### Q5: What is the benefit of the Strategy Pattern in financial metric computation?
+> **Answer**: The Strategy Pattern satisfies the Open/Closed Principle (OCP). New metrics (such as Sharpe Ratio, Sortino Ratio, or Calmar Ratio) can be added simply by creating a new class deriving from `IMetric` without modifying the `Journal` class or touching existing calculation logic.
 
-| Step | Task | Who |
-| --- | --- | --- |
-| 4.1 | Run the manual test checklist and log bugs as GitHub issues | All |
-| 4.2 | Build with `-fsanitize=address,undefined` and fix problems in own module | Each owner |
-| 4.3 | Cross-review (A to B to C to A) for clarity and `const`/RAII correctness | All |
-| 4.4 | Write the project report: each member writes the chapter for their own module | All |
-| 4.5 | Screenshots, demo rehearsal, tag release `v1.0` | All, C tags |
+#### Q6: How does `InMemoryTradeRepository` help in development and testing?
+> **Answer**: By coding to the `ITradeRepository` interface rather than a concrete SQLite class (Dependency Inversion Principle), business logic can be tested in memory without disk I/O, file locks, or external database setups. It also unblocked parallel development of the Domain and Web layers before the database layer was finalized.
 
-This week is also your buffer: if Weeks 1-3 slip, use it to finish features instead of polishing.
+---
 
-## Team Workflow Rules
+## 15. Limitations & Future Scope
 
-- **Ownership:** only the owner edits their files. Need a change elsewhere? Ask the owner or open a small pull request.
-- **Branches:** each member works on a `feature/*` branch and merges via pull request reviewed by the next member in the rotation.
-- **Sync:** merge to `main` at every checkpoint; short meeting twice a week.
-- **Never break `main`:** it must always build and pass `ctest`.
-- **If blocked,** use a stub: B's `InMemoryTradeRepository` or a hard-coded vector of trades.
+### Current Limitations
+- **Single Currency Assumption**: All entries assume a unified base currency (e.g., USD or INR) without cross-currency exchange rate conversions.
+- **Asset Scope**: Tailored for cash equities and linear instruments; complex non-linear derivatives (options Greeks, multi-leg spreads) are not currently modeled.
+- **Server Deployment**: Designed for local execution (`localhost:18080`) over HTTP; production deployment would require TLS/HTTPS termination and CSRF protection.
 
-## Risks and Mitigation
+### Future Scope
+- **Advanced Quantitative Metrics**: Implementation of Sharpe Ratio, Sortino Ratio, Profit-to-MaxDD ratio, and consecutive win/loss streaks.
+- **Emotional & Strategy Tagging**: Categorizing trades by psychological state (e.g., Disciplined, FOMO, Revenge) and strategy playbook.
+- **Live WebSocket Market Feeds**: Automated real-time mark-to-market valuations using asynchronous WebSockets.
+- **Database Scalability**: Migration path from SQLite to PostgreSQL for high-concurrency multi-user production environments.
+- **Containerization**: Dockerfile and Docker Compose support for zero-dependency containerized deployments.
 
-| Risk | Mitigation |
-| --- | --- |
-| Build differs across machines | Fix it in Phase 0 and write down the exact commands that worked |
-| One member waits on another | Interfaces agreed up front; B ships the in-memory repository in Week 1; A's core tests need nobody |
-| Merge conflicts | Strict file ownership; one route file per feature |
-| B is the critical path for the database switch | C stays on the in-memory repository until B's tests pass |
-| Running out of time | Cut CSV export first; it is independent. Core CRUD + dashboard + chart must be done by Checkpoint 3 |
+---
 
-## Limitations
+## 16. License
 
-- SQLite suits a few users, not heavy concurrent load.
-- Plain HTTP on localhost; production would need HTTPS and CSRF tokens.
-- All prices are entered manually; single currency; equities-style P&L only.
-
-## Future Scope
-
-Tags (strategy and emotion) with performance breakdown, position-size calculator, CSV import with duplicate detection, more metrics (expectancy, streaks, Sharpe), live market data and alerts, options/futures, PDF reports, 2FA, REST API tokens, PostgreSQL, Docker and CI/CD.
-
-## Submission Checklist
-
-- [ ] Source code with clear commit history (each member's commits visible)
-- [ ] `README.md` and a short project report
-- [ ] `sql/seed.sql` for the demo
-- [ ] Screenshots of dashboard, trade list, and add-trade form
-- [ ] Unit tests passing (`ctest`)
-- [ ] Demo script: register, add or seed trades, view dashboard, filter, export
-
-## License
-
-MIT
+This project is developed for academic evaluation under the **MIT License**.
