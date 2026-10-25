@@ -24,7 +24,7 @@ From a software engineering perspective, this project serves as a comprehensive 
 2. **Resource Management**: Implement **RAII (Resource Acquisition Is Initialization)** and modern move semantics to guarantee zero memory or resource leaks without a garbage collector.
 3. **Decoupled Architecture**: Structure the codebase into three isolated layers (Presentation, Domain, and Data) following the Dependency Inversion Principle.
 4. **Security & Data Isolation**: Guarantee safe multi-user operation through Argon2id cryptographic password hashing, parameterized SQL prepared statements, and session-guarded route middleware.
-5. **Rigorous Verification**: Validate core mathematical formulas and business logic through automated unit testing and address sanitization.
+5. **Memory Safety & Verification**: Guarantee high reliability and memory safety through clean resource deallocation and address sanitization.
 
 ---
 
@@ -74,8 +74,8 @@ The application is engineered as a decoupled, multi-tier system:
 ```
 
 ### Architectural Benefits
-- **Testability**: The Domain and Analytics classes (`Trade`, `Journal`, `IMetric`) have no dependencies on Crow or SQLite, permitting isolated unit testing in microseconds.
-- **Interchangeability**: The Repository pattern permits swapping SQLite for an in-memory test database or a distributed SQL engine without modifying a single line of business logic.
+- **Modularity & Decoupling**: The Domain and Analytics classes (`Trade`, `Journal`, `IMetric`) have no dependencies on Crow or SQLite, keeping business logic clean and isolated.
+- **Interchangeability**: The Repository pattern permits swapping SQLite for an in-memory storage repository or a distributed SQL engine without modifying a single line of business logic.
 - **Fail-Safe Resource Handling**: Database handles and prepared statements are scoped to stack frames, ensuring automatic deallocation even when exceptions are thrown.
 
 ---
@@ -127,7 +127,6 @@ The analytics engine processes sorted trade sequences to compute standard financ
 | **Database Engine** | **SQLite 3** | Serverless, zero-configuration, transactional relational database accessible via C-API. |
 | **Password Hashing** | **libsodium** | Cryptographically secure Argon2id implementation (`crypto_pwhash_str`) resistant to GPU/ASIC attacks. |
 | **Build System** | **CMake** (>= 3.16) | Standard cross-platform configuration supporting Linux, macOS, and Windows. |
-| **Unit Testing** | **GoogleTest (GTest)**| Industrial-grade xUnit testing framework for C++. |
 | **Frontend Styling** | **Bootstrap 5** | Clean responsive layouts, dark/light styling, modal alerts, and tables. |
 | **Data Visualization**| **Chart.js** | Client-side HTML5 canvas charting for interactive time-series equity curves. |
 
@@ -185,7 +184,7 @@ trading_journal/
 │   ├── statement.hpp                      [B] RAII sqlite3_stmt* prepared statement wrapper
 │   ├── user_repository.hpp                [B] UserRepository interface and SQLite implementation
 │   ├── trade_repository.hpp               [B] ITradeRepository interface and SqliteTradeRepository
-│   ├── in_memory_trade_repository.hpp     [B] Mock trade repository for automated testing
+│   ├── in_memory_trade_repository.hpp     [B] In-memory trade repository implementation
 │   ├── auth_service.hpp                   [C] Argon2id password hashing and validation service
 │   ├── middleware.hpp                     [C] AuthGuard session middleware and user extraction
 │   └── routes.hpp                         [C] Route handler signatures and dependency injection container (Deps)
@@ -221,7 +220,7 @@ trading_journal/
 │
 ├── sql/                                   [Database Scripts]
 │   ├── schema.sql                         [B] DDL schema definition for users and trades
-│   └── seed.sql                           [A] 20 realistic historical trades for testing & demonstration
+│   └── seed.sql                           [A] 20 realistic historical trades for initial seed & demonstration
 │
 └── third_party/
     └── crow/crow_all.h                    [External] Header-only Crow web framework
@@ -350,12 +349,12 @@ private:
 #### Linux (Ubuntu / Debian / WSL)
 ```bash
 sudo apt update
-sudo apt install build-essential cmake libsqlite3-dev libsodium-dev libasio-dev libgtest-dev sqlite3
+sudo apt install build-essential cmake libsqlite3-dev libsodium-dev libasio-dev sqlite3
 ```
 
 #### macOS (via Homebrew)
 ```bash
-brew install cmake sqlite libsodium asio googletest
+brew install cmake sqlite libsodium asio
 ```
 
 ---
@@ -396,22 +395,7 @@ sqlite3 trading_journal.db < sql/seed.sql
 
 ---
 
-## 11. Testing & Memory Verification
-
-### Unit Testing Suite
-The analytical core and business validators are tested using GoogleTest:
-
-```bash
-# Run tests via CTest
-ctest --test-dir build --output-on-failure
-```
-
-#### Key Test Scenarios Covered
-1. **Trade Domain Math**: Long vs. Short profit formulas, fee deductions, equality comparison, and chronological sorting.
-2. **Metric Strategy Algorithms**: Correct mathematical outcomes on hand-calculated trading scenarios; division-by-zero protection in `ProfitFactor`.
-3. **Polymorphic Execution**: Dynamically registering custom metrics into `Journal` using `addMetric()` and validating runtime computation.
-4. **Validation Logic**: Verification that invalid quantities ($q \le 0$), negative prices, and bad date formats reliably throw `ValidationError` with targeted field identifiers.
-5. **Persistence Isolation**: Verifying that queries for User 1 never leak records belonging to User 2.
+## 11. Memory Safety & Sanitization
 
 ### Memory Leak & Undefined Behavior Sanitization
 To demonstrate industrial-grade memory safety, the build can be compiled with Clang / GCC AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan):
@@ -454,7 +438,7 @@ cmake --build build_san -j4
   - `include/database.hpp` & `src/database.cpp`: RAII wrapper for `sqlite3*` connection lifecycle management.
   - `include/statement.hpp` & `src/statement.cpp`: RAII wrapper for `sqlite3_stmt*` prepared statement binding and row fetching.
   - `include/trade_repository.hpp` & `src/trade_repository.cpp`: `ITradeRepository` interface and `SqliteTradeRepository` implementation with strict user isolation.
-  - `include/in_memory_trade_repository.hpp` & `src/in_memory_trade_repository.cpp`: Standalone mock repository for decoupled unit testing.
+  - `include/in_memory_trade_repository.hpp` & `src/in_memory_trade_repository.cpp`: Standalone in-memory repository for decoupled storage.
   - `include/user_repository.hpp` & `src/user_repository.cpp`: User retrieval and registration queries.
   - `sql/schema.sql`: Relational database schema with constraints and index creation.
 
@@ -472,31 +456,7 @@ cmake --build build_san -j4
 
 ---
 
-## 14. Viva Defense & Evaluation Guide
-
-This section outlines technical questions and rationales prepared for project viva examination:
-
-#### Q1: Why is `profit()` marked as `const`, and why does `Trade` overload `operator<`?
-> **Answer**: `profit()` calculates and returns a value based purely on existing attributes without mutating the object's internal state. Marking it `const` guarantees const-correctness and permits calling it on `const Trade&` references. `operator<` compares trades chronologically by date (`tradeDate_ < o.tradeDate_`), allowing `std::sort` to order trades prior to calculating time-series equity curves and maximum drawdowns.
-
-#### Q2: Why does `IMetric` require a virtual destructor?
-> **Answer**: `Journal` manages a collection of derived metric instances (`WinRate`, `ProfitFactor`, etc.) through base class pointers (`std::unique_ptr<IMetric>`). If the base class destructor were non-virtual, deleting a derived object via a base pointer would trigger undefined behavior and fail to invoke the derived destructor, resulting in potential resource leaks.
-
-#### Q3: Why is the `Journal` class move-only (copy constructor deleted)?
-> **Answer**: `Journal` owns a vector of `std::unique_ptr<IMetric>`. Because `std::unique_ptr` cannot be copied (it models exclusive ownership), copying a `Journal` is illegal. Following the C++ Rule of Five, we explicitly delete the copy constructor and copy assignment operator (`= delete`) and provide defaulted move operations (`= default`) to allow transferring ownership efficiently without heap duplication.
-
-#### Q4: How does RAII in the `Database` and `Statement` classes prevent resource leaks?
-> **Answer**: In C APIs like SQLite, developers must pair every `sqlite3_open` with `sqlite3_close` and every `sqlite3_prepare_v2` with `sqlite3_finalize`. If an exception is thrown mid-execution, manual cleanup code is bypassed. By encapsulating these handles within C++ classes whose destructors automatically invoke the cleanup functions, C++ stack unwinding guarantees that resources are released under all exit paths.
-
-#### Q5: What is the benefit of the Strategy Pattern in financial metric computation?
-> **Answer**: The Strategy Pattern satisfies the Open/Closed Principle (OCP). New metrics (such as Sharpe Ratio, Sortino Ratio, or Calmar Ratio) can be added simply by creating a new class deriving from `IMetric` without modifying the `Journal` class or touching existing calculation logic.
-
-#### Q6: How does `InMemoryTradeRepository` help in development and testing?
-> **Answer**: By coding to the `ITradeRepository` interface rather than a concrete SQLite class (Dependency Inversion Principle), business logic can be tested in memory without disk I/O, file locks, or external database setups. It also unblocked parallel development of the Domain and Web layers before the database layer was finalized.
-
----
-
-## 15. Limitations & Future Scope
+## 14. Limitations & Future Scope
 
 ### Current Limitations
 - **Single Currency Assumption**: All entries assume a unified base currency (e.g., USD or INR) without cross-currency exchange rate conversions.
@@ -511,7 +471,3 @@ This section outlines technical questions and rationales prepared for project vi
 - **Containerization**: Dockerfile and Docker Compose support for zero-dependency containerized deployments.
 
 ---
-
-## 16. License
-
-This project is developed for academic evaluation under the **MIT License**.
