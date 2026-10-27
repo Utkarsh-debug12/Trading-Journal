@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body class="bg-light d-flex flex-column min-vh-100">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
@@ -27,7 +29,8 @@
                         <a class="nav-link" href="/trades"><i class="bi bi-journal-text me-1"></i>Trades</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active fw-semibold" href="/trades/new"><i class="bi bi-plus-circle me-1"></i>Add Trade</a>
+                        <a class="nav-link active fw-semibold" href="/trades/new"><i
+                                class="bi bi-plus-circle me-1"></i>Add Trade</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
@@ -68,53 +71,63 @@
                                 <!-- Ticker & Direction -->
                                 <div class="col-md-6">
                                     <label for="ticker" class="form-label fw-semibold">Ticker Symbol</label>
-                                    <input type="text" class="form-control text-uppercase" id="ticker" name="ticker" placeholder="e.g. AAPL" value="{{ticker}}" required autofocus>
+                                    <input type="text" class="form-control text-uppercase" id="ticker" name="ticker"
+                                        placeholder="e.g. AAPL" value="{{ticker}}" required autofocus>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="direction" class="form-label fw-semibold">Direction</label>
                                     <select class="form-select" id="direction" name="direction" required>
-                                        <option value="Long" {{#is_long}}selected{{/is_long}}>Long (Buy Low, Sell High)</option>
-                                        <option value="Short" {{#is_short}}selected{{/is_short}}>Short (Sell High, Buy Low)</option>
+                                        <option value="Long" {{#is_long}}selected{{/is_long}}>Long (Buy Low, Sell High)
+                                        </option>
+                                        <option value="Short" {{#is_short}}selected{{/is_short}}>Short (Sell High, Buy
+                                            Low)</option>
                                     </select>
                                 </div>
 
                                 <!-- Entry & Exit Prices -->
                                 <div class="col-md-6">
-                                    <label for="entryPrice" class="form-label fw-semibold">Entry Price ($)</label>
+                                    <label for="entryPrice" class="form-label fw-semibold">Entry Price (₹)</label>
                                     <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="any" min="0.0001" class="form-control" id="entryPrice" name="entryPrice" placeholder="0.00" value="{{entry}}" required>
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="any" min="0.0001" class="form-control"
+                                            id="entryPrice" name="entryPrice" placeholder="0.00" value="{{entry}}"
+                                            required>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="exitPrice" class="form-label fw-semibold">Exit Price ($)</label>
+                                    <label for="exitPrice" class="form-label fw-semibold">Exit Price (₹)</label>
                                     <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="any" min="0.0001" class="form-control" id="exitPrice" name="exitPrice" placeholder="0.00" value="{{exit}}" required>
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="any" min="0.0001" class="form-control" id="exitPrice"
+                                            name="exitPrice" placeholder="0.00" value="{{exit}}" required>
                                     </div>
                                 </div>
 
                                 <!-- Quantity, Fees, Trade Date -->
                                 <div class="col-md-4">
                                     <label for="quantity" class="form-label fw-semibold">Quantity / Shares</label>
-                                    <input type="number" step="1" min="1" class="form-control" id="quantity" name="quantity" placeholder="1" value="{{quantity}}" required>
+                                    <input type="number" step="1" min="1" class="form-control" id="quantity"
+                                        name="quantity" placeholder="1" value="{{quantity}}" required>
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="fees" class="form-label fw-semibold">Commission & Fees ($)</label>
+                                    <label for="fees" class="form-label fw-semibold">Commission & Fees (₹)</label>
                                     <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="any" min="0" class="form-control" id="fees" name="fees" placeholder="0.00" value="{{fees}}">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="any" min="0" class="form-control" id="fees"
+                                            name="fees" placeholder="0.00" value="{{fees}}">
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="tradeDate" class="form-label fw-semibold">Trade Date</label>
-                                    <input type="date" class="form-control" id="tradeDate" name="tradeDate" value="{{tradeDate}}" required>
+                                    <input type="date" class="form-control" id="tradeDate" name="tradeDate"
+                                        value="{{tradeDate}}" required>
                                 </div>
 
                                 <!-- Notes -->
                                 <div class="col-12">
                                     <label for="notes" class="form-label fw-semibold">Strategy & Setup Notes</label>
-                                    <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Setup trigger, risk management, lessons learned...">{{notes}}</textarea>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3"
+                                        placeholder="Setup trigger, risk management, lessons learned...">{{notes}}</textarea>
                                 </div>
                             </div>
 
@@ -140,4 +153,5 @@
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

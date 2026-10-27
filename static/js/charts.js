@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Cumulative Net Equity ($)',
+                        label: 'Cumulative Net Equity (₹)',
                         data: values,
                         borderColor: primaryColor,
                         backgroundColor: gradientFill,
@@ -105,21 +105,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             titleFont: { size: 13, weight: 'bold' },
                             bodyFont: { size: 12 },
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const val = context.parsed.y;
                                     const sign = val >= 0 ? '+' : '';
-                                    return `Equity: ${sign}$${val.toLocaleString(undefined, {
+                                    return `Equity: ${sign}₹${val.toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2
                                     })}`;
                                 },
-                                afterLabel: function(context) {
+                                afterLabel: function (context) {
                                     const idx = context.dataIndex;
                                     if (details[idx] && details[idx].profit !== undefined) {
                                         const p = details[idx].profit;
                                         const sign = p >= 0 ? '+' : '';
                                         const ticker = details[idx].ticker ? ` (${details[idx].direction || ''} ${details[idx].ticker})` : '';
-                                        return `Trade P&L: ${sign}$${p.toFixed(2)}${ticker}`;
+                                        return `Trade P&L: ${sign}₹${p.toFixed(2)}${ticker}`;
                                     }
                                     return '';
                                 }
@@ -144,8 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             },
                             ticks: {
                                 font: { size: 11 },
-                                callback: function(value) {
-                                    return (value >= 0 ? '$' : '-$') + Math.abs(value).toLocaleString();
+                                callback: function (value) {
+                                    return (value >= 0 ? '₹' : '-₹') + Math.abs(value).toLocaleString();
                                 }
                             }
                         }
