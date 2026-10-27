@@ -85,12 +85,12 @@
                             <span class="text-muted small text-uppercase fw-semibold">Net P&L</span>
                             <span
                                 class="badge {{#is_pnl_positive}}bg-success-subtle text-success{{/is_pnl_positive}}{{^is_pnl_positive}}bg-danger-subtle text-danger{{/is_pnl_positive}} rounded-pill">
-                                {{#is_pnl_positive}}+${{total_pnl}}{{/is_pnl_positive}}{{^is_pnl_positive}}-${{total_pnl}}{{/is_pnl_positive}}
+                                {{#is_pnl_positive}}+₹{{total_pnl}}{{/is_pnl_positive}}{{^is_pnl_positive}}-₹{{total_pnl}}{{/is_pnl_positive}}
                             </span>
                         </div>
                         <h2
                             class="h3 fw-bold mb-1 {{#is_pnl_positive}}text-success{{/is_pnl_positive}}{{^is_pnl_positive}}text-danger{{/is_pnl_positive}}">
-                            {{#is_pnl_positive}}+${{total_pnl}}{{/is_pnl_positive}}{{^is_pnl_positive}}-${{total_pnl}}{{/is_pnl_positive}}
+                            {{#is_pnl_positive}}+₹{{total_pnl}}{{/is_pnl_positive}}{{^is_pnl_positive}}-₹{{total_pnl}}{{/is_pnl_positive}}
                         </h2>
                         <span class="text-muted small">Cumulative return across all trades</span>
                     </div>
@@ -138,7 +138,7 @@
                             <span class="text-muted small text-uppercase fw-semibold">Max Drawdown</span>
                             <i class="bi bi-arrow-down-right text-danger"></i>
                         </div>
-                        <h2 class="h3 fw-bold mb-1 text-danger">-${{max_drawdown}}</h2>
+                        <h2 class="h3 fw-bold mb-1 text-danger">-₹{{max_drawdown}}</h2>
                         <span class="text-muted small">Peak-to-trough decline</span>
                     </div>
                 </div>
@@ -172,7 +172,7 @@
                             <span class="text-muted small text-uppercase fw-semibold">Average Win</span>
                             <i class="bi bi-graph-up-arrow text-success"></i>
                         </div>
-                        <div class="h4 fw-bold mb-1 text-success">+${{avg_win}}</div>
+                        <div class="h4 fw-bold mb-1 text-success">+₹{{avg_win}}</div>
                         <span class="text-muted small">Per winning trade</span>
                     </div>
                 </div>
@@ -186,7 +186,7 @@
                             <span class="text-muted small text-uppercase fw-semibold">Average Loss</span>
                             <i class="bi bi-graph-down-arrow text-danger"></i>
                         </div>
-                        <div class="h4 fw-bold mb-1 text-danger">-${{avg_loss}}</div>
+                        <div class="h4 fw-bold mb-1 text-danger">-₹{{avg_loss}}</div>
                         <span class="text-muted small">Per losing trade</span>
                     </div>
                 </div>
@@ -283,13 +283,13 @@
                                         {{direction}}
                                     </span>
                                 </td>
-                                <td class="text-end font-monospace small">${{entry}}</td>
-                                <td class="text-end font-monospace small">${{exit}}</td>
+                                <td class="text-end font-monospace small">₹{{entry}}</td>
+                                <td class="text-end font-monospace small">₹{{exit}}</td>
                                 <td class="text-end font-monospace small">{{quantity}}</td>
-                                <td class="text-end font-monospace small">${{fees}}</td>
+                                <td class="text-end font-monospace small">₹{{fees}}</td>
                                 <td
                                     class="text-end font-monospace fw-bold {{#is_win}}text-success{{/is_win}}{{^is_win}}text-danger{{/is_win}}">
-                                    {{#is_win}}+${{profit}}{{/is_win}}{{^is_win}}-${{profit}}{{/is_win}}
+                                    {{#is_win}}+₹{{profit}}{{/is_win}}{{^is_win}}-₹{{profit}}{{/is_win}}
                                 </td>
                                 <td>
                                     <span

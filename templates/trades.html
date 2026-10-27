@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body class="bg-light d-flex flex-column min-vh-100">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
@@ -24,7 +26,8 @@
                         <a class="nav-link" href="/"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active fw-semibold" href="/trades"><i class="bi bi-journal-text me-1"></i>Trades</a>
+                        <a class="nav-link active fw-semibold" href="/trades"><i
+                                class="bi bi-journal-text me-1"></i>Trades</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/trades/new"><i class="bi bi-plus-circle me-1"></i>Add Trade</a>
@@ -81,31 +84,39 @@
                     <div class="col-sm-6 col-md-3">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" name="ticker" placeholder="Filter by ticker..." value="{{ticker_filter}}">
+                            <input type="text" class="form-control" name="ticker" placeholder="Filter by ticker..."
+                                value="{{ticker_filter}}">
                         </div>
                     </div>
                     <div class="col-sm-6 col-md-2">
                         <select class="form-select form-select-sm" name="winOnly">
                             <option value="">All Results</option>
-                            <option value="true" {{#filter_wins_selected}}selected{{/filter_wins_selected}}>Wins Only</option>
-                            <option value="false" {{#filter_losses_selected}}selected{{/filter_losses_selected}}>Losses Only</option>
+                            <option value="true" {{#filter_wins_selected}}selected{{/filter_wins_selected}}>Wins Only
+                            </option>
+                            <option value="false" {{#filter_losses_selected}}selected{{/filter_losses_selected}}>Losses
+                                Only</option>
                         </select>
                     </div>
                     <div class="col-sm-6 col-md-2">
                         <select class="form-select form-select-sm" name="direction">
                             <option value="">All Directions</option>
-                            <option value="Long" {{#filter_long_selected}}selected{{/filter_long_selected}}>Long</option>
-                            <option value="Short" {{#filter_short_selected}}selected{{/filter_short_selected}}>Short</option>
+                            <option value="Long" {{#filter_long_selected}}selected{{/filter_long_selected}}>Long
+                            </option>
+                            <option value="Short" {{#filter_short_selected}}selected{{/filter_short_selected}}>Short
+                            </option>
                         </select>
                     </div>
                     <div class="col-sm-6 col-md-2">
-                        <input type="date" class="form-control form-control-sm" name="startDate" placeholder="From Date" value="{{start_date_filter}}">
+                        <input type="date" class="form-control form-control-sm" name="startDate" placeholder="From Date"
+                            value="{{start_date_filter}}">
                     </div>
                     <div class="col-sm-6 col-md-2">
-                        <input type="date" class="form-control form-control-sm" name="endDate" placeholder="To Date" value="{{end_date_filter}}">
+                        <input type="date" class="form-control form-control-sm" name="endDate" placeholder="To Date"
+                            value="{{end_date_filter}}">
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+                        <button type="submit" class="btn btn-sm btn-primary"><i
+                                class="bi bi-funnel me-1"></i>Filter</button>
                         <a href="/trades" class="btn btn-sm btn-outline-secondary">Reset</a>
                     </div>
                 </form>
@@ -138,16 +149,18 @@
                                 <td class="ps-4 text-nowrap font-monospace small">{{date}}</td>
                                 <td class="fw-bold">{{ticker}}</td>
                                 <td>
-                                    <span class="badge {{#is_long}}bg-primary{{/is_long}}{{^is_long}}bg-dark{{/is_long}}">
+                                    <span
+                                        class="badge {{#is_long}}bg-primary{{/is_long}}{{^is_long}}bg-dark{{/is_long}}">
                                         {{direction}}
                                     </span>
                                 </td>
-                                <td class="text-end font-monospace">${{entry}}</td>
-                                <td class="text-end font-monospace">${{exit}}</td>
+                                <td class="text-end font-monospace">₹{{entry}}</td>
+                                <td class="text-end font-monospace">₹{{exit}}</td>
                                 <td class="text-end font-monospace">{{quantity}}</td>
-                                <td class="text-end font-monospace text-muted">${{fees}}</td>
-                                <td class="text-end font-monospace fw-bold {{#is_win}}text-success{{/is_win}}{{^is_win}}text-danger{{/is_win}}">
-                                    {{#is_win}}+${{profit}}{{/is_win}}{{^is_win}}-${{profit}}{{/is_win}}
+                                <td class="text-end font-monospace text-muted">₹{{fees}}</td>
+                                <td
+                                    class="text-end font-monospace fw-bold {{#is_win}}text-success{{/is_win}}{{^is_win}}text-danger{{/is_win}}">
+                                    {{#is_win}}+₹{{profit}}{{/is_win}}{{^is_win}}-₹{{profit}}{{/is_win}}
                                 </td>
                                 <td>
                                     <span class="badge {{#is_win}}badge-win{{/is_win}}{{^is_win}}badge-loss{{/is_win}}">
@@ -156,11 +169,14 @@
                                 </td>
                                 <td class="text-truncate small text-muted" style="max-width: 150px;">{{notes}}</td>
                                 <td class="text-center pe-4 text-nowrap">
-                                    <a href="/trades/{{id}}/edit" class="btn btn-sm btn-outline-primary py-0 px-2 me-1" title="Edit">
+                                    <a href="/trades/{{id}}/edit" class="btn btn-sm btn-outline-primary py-0 px-2 me-1"
+                                        title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <form method="POST" action="/trades/{{id}}/delete" class="d-inline" onsubmit="return confirm('Delete this trade?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Delete">
+                                    <form method="POST" action="/trades/{{id}}/delete" class="d-inline"
+                                        onsubmit="return confirm('Delete this trade?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"
+                                            title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -189,4 +205,5 @@
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
