@@ -1,0 +1,55 @@
+# Build directories
+build/
+bin/
+lib/
+out/
+cmake-build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+compile_commands.json
+
+# Compiled binaries and libraries
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+trading_journal
+
+# Local SQLite databases (created automatically at runtime or by demo.sh)
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Logs and environment
+*.log
+.env
+
+# Third party dependencies
+third_party/
